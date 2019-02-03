@@ -1,0 +1,92 @@
+
+#glyph-alternates-popup {
+    overflow: visible;
+    position: absolute;
+    padding: 0;
+    transform: none;
+    width: auto;
+    max-width: 720px;
+    text-align: left;
+    background: white;
+    z-index: 1000;
+    box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.25);
+}
+
+#glyph-alternates-popup > aside {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    transform: translate(-50%, -40%) rotate(45deg);
+    z-index: -1;
+    background: white;
+    box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.25);
+}
+
+#glyph-alternates-popup > * + * {
+    margin-top: 0 !important;
+}
+
+#glyph-alternates-popup.tester-hint {
+    left: 50%;
+    transform: translateX(-50%);
+    top: calc(100% - 30px * 3);
+    max-width: calc(100vw - 30px * 2);
+}
+
+#glyph-alternates-popup.tester-hint, #glyph-alternates-popup .tester-hint {
+    text-align: center;
+}
+
+#glyph-alternates-popup.tester-hint > div, #glyph-alternates-popup .tester-hint > div {
+    padding: 30px;
+    border-bottom: 1px solid #ccc;
+}
+
+#glyph-alternates-popup.tester-hint p, #glyph-alternates-popup .tester-hint p {
+    margin-bottom: 30px;
+}
+
+#glyph-alternates-popup.glyphs-hint {
+    min-width: 14em;
+}
+
+#glyph-alternates-popup ul {
+    display: block;
+    margin: 0;
+    padding: 0;
+    background: white;
+}
+
+#glyph-alternates-popup li {
+    display: inline-block;
+    text-align: center;
+    padding: 20px;
+    cursor: pointer;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+    box-sizing: border-box;
+    font-size: 36px;
+}
+
+@media (min-width: 520px) {
+    #glyph-alternates-popup li {
+      font-size: 48px;
+    }
+}
+
+@media (min-width: 960px) {
+    #glyph-alternates-popup li {
+      font-size: 60px;
+    }
+}
+
+#glyph-alternates-popup li.selected {
+    background-color: #d65838;
+    color: white;
+    cursor: default;
+}
+

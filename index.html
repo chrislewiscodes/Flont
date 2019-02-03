@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <title>Glyph alternates demo</title>
+    <script src="https://lauraworthingtondesign.com/js/opentype.min.js"></script>
+    <script src="glyph-alternates.js"></script>
+    <link rel="stylesheet" href="glyph-alternates.css"></script>
+    <style>
+        @font-face {
+            font-family: "Glyph Alts Test";
+            src: url("infini-romain.otf") format("opentype");
+        }
+
+        samp {
+            display: block;
+            font-size: 60px;
+            font-family: "Glyph Alts Test", "Comic Sans MS";
+            padding: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <samp contenteditable data-webfont-url="infini-romain.otf">All your glyphs are belonging to us</samp>
+</body>
+
+</html>
