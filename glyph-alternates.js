@@ -320,7 +320,7 @@ function populateAlternates(sample, callback) {
             feature.lookupListIndexes.forEach(function(lli) {
                 var lookup = gsub.lookups[lli];
                 lookup.subtables.forEach(function(subtable) {
-                    console.log(tag, lli, subtable);
+                    //console.log(tag, lli, subtable);
                     if ('coverage' in subtable && 'substitute' in subtable) {
                         if ('glyphs' in subtable.coverage) {
                             subtable.coverage.glyphs.forEach(function(fromglyph, i) {
