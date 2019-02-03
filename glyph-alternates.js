@@ -295,7 +295,12 @@ function populateAlternates(sample, callback) {
         font.tables.cmap.glyphIndexMap.forEach(function(g, u) {
             reversecmap[g] = String.fromCharCode(u);
         });
-        function addAlt(fromText, toGlyph, feature) {
+        function addAlt(fromText, toGlyphID, feature) {
+            var toGlyph = font.glyphs.glyphs[toGlyphID];
+            if (!toGlyph) {
+                console.log('ERROR: "' + fromText + '" + ' + feature + ' results in nonexistent glyph ' + toGlyphID + '.');
+                return;
+            }
             try {
                 var metrics = toGlyph.getMetrics();
                 if (!(fromText in glyphAlternates[fontname])) {
@@ -314,6 +319,7 @@ function populateAlternates(sample, callback) {
             }
         }
         
+        var unhandled = {};
         gsub.features.forEach(function(f) {
             var tag = f.tag;
             var feature = f.feature;
@@ -324,26 +330,26 @@ function populateAlternates(sample, callback) {
                     if ('coverage' in subtable && 'substitute' in subtable) {
                         if ('glyphs' in subtable.coverage) {
                             subtable.coverage.glyphs.forEach(function(fromglyph, i) {
-                                addAlt(reversecmap[fromglyph], font.glyphs.glyphs[subtable.substitute[i]], tag);
+                                addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
                             });
                         } else if ('ranges' in subtable.coverage) {
                             var i = 0;
                             subtable.coverage.ranges.forEach(function(range) {
                                 for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
-                                    addAlt(reversecmap[fromglyph], font.glyphs.glyphs[subtable.substitute[i++]], tag);
+                                    addAlt(reversecmap[fromglyph], subtable.substitute[i++], tag);
                                 }
                             });
                         }
                     } else if ('coverage' in subtable && 'deltaGlyphId' in subtable) {
                         if ('glyphs' in subtable.coverage) {
                             subtable.coverage.glyphs.forEach(function(fromglyph) {
-                                addAlt(reversecmap[fromglyph], font.glyphs.glyphs[fromglyph + subtable.deltaGlyphId], tag);
+                                addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
                             });
                         } else if ('ranges' in subtable.coverage) {
                             var i = 0;
                             subtable.coverage.ranges.forEach(function(range) {
                                 for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
-                                    addAlt(reversecmap[fromglyph], font.glyphs.glyphs[fromglyph + subtable.deltaGlyphId], tag);
+                                    addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
                                 }
                             });
                         }
@@ -382,18 +388,24 @@ function populateAlternates(sample, callback) {
                                 ligset.components.forEach(function(component) {
                                     lig += reversecmap[component];
                                 });
-                                addAlt(lig, font.glyphs.glyphs[ligset.ligGlyph], tag);
+                                addAlt(lig, ligset.ligGlyph, tag);
                                 ligs.push(lig);
                             });
                         });
                     } else {
-                        if (tag !== 'calt') {
-                            console.log('Unhandled OT feature:', tag, subtable);
+                        if (!(tag in unhandled)) {
+                            unhandled[tag] = 0;
                         }
+                        unhandled[tag] += 1;
+//                         console.log('Unhandled OT feature:', tag, subtable);
                     }
                 });
             });
         });
+        
+        if (Object.keys(unhandled).length) {
+            console.log("Unhandled features: ", unhandled);
+        }
 
         if (callback) {
             callback(font);
@@ -687,20 +699,6 @@ function setupGlyphSelection(sample) {
             allAlts = glyphAlternates[fontname][selectedText];
             hasAlts = true;
         }
-
-        //if you want to match ligatures too...
-/*
-        glyphAlternates[fontname].forEach(function(features, fromString) {
-            var start = selectedText.indexOf(fromString);
-            if (start !== 0) return;
-            features.forEach(function(info, toglyph) {
-                if (!(toglyph in allAlts)) {
-                    allAlts[toglyph] = info;
-                    hasAlts = true;
-                }
-            });
-        });
-*/
 
         if (hasAlts) {
             var wrapper = document.createElement('div');
