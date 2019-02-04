@@ -3,6 +3,10 @@
 
 window.FontTester = function(options) {
 
+    var dependencies = {
+        'opentype': 'https://cdn.jsdelivr.net/npm/opentype.js@latest/dist/opentype.min.js'
+    };
+
     var allAlternates = {};
     var otFeatures = {
         'abvf': "Above-base Forms",
@@ -71,15 +75,40 @@ window.FontTester = function(options) {
     //make sure we have everything we need
     sanitizeOptions();
 
-    //load webfont and parse features
-    populateAlternates();
-
-    //set up the sample element for glyph-alternate replacement
-    setupGlyphSelector();
+    verifyDependencies(function() {
+        //load webfont and parse features
+        populateAlternates();
+    
+        //set up the sample element for glyph-alternate replacement
+        setupGlyphSelector();
+    });
     
     //and that's it! 
    
     //everything after this is just function definitions
+    function verifyDependencies(callback) {
+        var toLoad = Object.keys(dependencies).length;
+        dependencies.forEach(function(url, name) {
+            var script;
+            if (name in window) {
+                --toLoad;
+            } else {
+                script = document.createElement('script');
+                script.src = url;
+                script.addEventListener('load', function() {
+                    --toLoad;
+                    if (toLoad <= 0 && callback) {
+                        callback();
+                    }
+                });
+                document.head.appendChild(script);
+            }
+            if (toLoad <= 0 && callback) {
+                callback();
+            }
+        });
+    }
+    
     function sanitizeOptions() {
         function optionError(opt, msg) {
             throw "FontTester: Invalid options" + (opt ? ': ' + opt : '') + (msg ? ' ' + msg : '');
