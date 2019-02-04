@@ -25,11 +25,14 @@
         <label for='font-features'>Font features</label>
         <select multiple id='font-features'>
         </select>
-        <samp contenteditable data-webfont-url="infini-romain.otf">All your 1690 glyphs are belong to us</samp>
+        <samp contenteditable>All your 1690 glyphs are belong to us</samp>
     </form>
     
     <script>
-        FontTester('samp')
+        FontTester({
+            'sample': 'samp',
+            'fontURL': 'infini-romain.otf'
+        });
     </script>
 </body>
 

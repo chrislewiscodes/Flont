@@ -75,13 +75,11 @@ window.FontTester = function(options) {
     //make sure we have everything we need
     sanitizeOptions();
 
-    verifyDependencies(function() {
-        //load webfont and parse features
-        populateAlternates();
-    
-        //set up the sample element for glyph-alternate replacement
-        setupGlyphSelector();
-    });
+    //load webfont and parse features
+    verifyDependencies(populateAlternates);
+
+    //set up the sample element for glyph-alternate replacement
+    setupGlyphSelector();
     
     //and that's it! 
    
@@ -141,6 +139,7 @@ window.FontTester = function(options) {
         }
     
         //sanity check on inputs
+        options.sample = getElement(options.sample);
         if (!options.sample) {
             optionError('sample', 'must be element or CSS selector');
         }
