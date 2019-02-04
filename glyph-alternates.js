@@ -1,6 +1,32 @@
 (function() {
 "use strict";
 
+/*
+ * Ultra-simple usage:
+ *
+ * FontTester('#specimen-element[data-webfont-url]') 
+ * 
+ * Call with a single HTMLElement object or CSS selector string, representing the font-specimen display element.
+ * That element needs to have a `data-webfont-url` attribute on it containing the URL to a TTF, OTF, or WOFF font.
+ * This will set that element up with popup glyph-alternates selectors when the user selects text.
+ *
+ * Flexible usage:
+ *
+ * FontTester({
+     sample: '#specimen-element', //required
+     fontURL: 'https://mysite.com/fonts/webfont.woff', //either this or data-webfont-url attribute on sample element is required
+     controls: {
+         'size': '#font-size-input', //input that controls font size
+         'leading': '#line-height-input', //input that controls line height
+         'tracking': '#letter-spacing-input', //input that controls letter spacing
+         'foreground': '#fgcolor-input', //input that controls foreground color
+         'background': '#bgcolor-input', //input that controls background color,
+         'features': '#feature-select', //an empty select or list element to be filled with toggleable OpenType features 
+    })
+ *
+ */
+ 
+
 window.FontTester = function(options) {
 
     var dependencies = {
@@ -77,6 +103,9 @@ window.FontTester = function(options) {
 
     //load webfont and parse features
     verifyDependencies(populateAlternates);
+
+    //link up controls to sample
+    setupControls();
 
     //set up the sample element for glyph-alternate replacement
     setupGlyphSelector();
@@ -184,6 +213,61 @@ window.FontTester = function(options) {
         }
     }
     
+    //populate features dropdown
+    function populateFeatures(font) {
+        var select = options.controls.features;
+
+        //no need to do this if there is no features control
+        if (!select || !select.tagName || !select.tagName.match(/UL|OL|SELECT/)) {
+            return;
+        }
+
+        select.textContent = "";
+
+        //styleset matcher
+        var ssre = /ss\d\d/;
+        
+        //features to be enabled by default
+        var defaults = /liga|calt|r.../; //"r" features usually mean "required" and probably can't be disabled
+
+        var seen = {};
+        
+        if (!font.tables.gsub || !font.tables.gsub.features) {
+            //there ain't no features
+            return;
+        }
+
+        font.tables.gsub.features.forEach(function(table) {
+            if (table.tag in seen) return; //sometimes see weird duplicates
+            if (!(table.tag in otFeatures)) return;
+            //if (ssre.test(table.tag)) return;
+            if (select.tagName === 'SELECT') {
+                var option = document.createElement('option');
+                option.value = table.tag;
+                option.textContent = otFeatures[table.tag];
+                option.selected = defaults.test(table.tag);
+                select.appendChild(option);
+            } else {
+                var rando = "input-" + Date.now().toString() + '-' + Math.random().toString().substr(2);
+                var item = document.createElement('li');
+                var input = document.createElement('input');
+                var label = document.createElement('label');
+                input.type = 'checkbox';
+                input.checked = defaults.test(table.tag);
+                input.value = table.tag;
+                input.id = rando;
+                label.textContent = otFeatures[table.tag];
+                label.setAttribute('for', rando);
+                item.appendChild(input);
+                item.appendChild(label);
+                select.appendChild(item);
+            }
+            seen[table.tag] = true;
+        });
+
+        select.trigger('change');
+    }
+    
     function populateAlternates(callback) {
         window.alts = allAlternates[options.fontURL] = {};
     
@@ -194,6 +278,8 @@ window.FontTester = function(options) {
             }
     
             window.font = font;
+
+            populateFeatures(font);
             
             //populate glyph alternates
             var gsub = font.tables.gsub;
@@ -317,16 +403,52 @@ window.FontTester = function(options) {
             if (Object.keys(unhandled).length) {
                 console.log("Unhandled features: ", unhandled);
             }
-    
+
             if (callback) {
                 callback(font);
             }
         });
     }
 
+    //when changing fonts or other major styling, reset the sample to plain text
+    function resetSample() {
+        //replace custom chars with plain text
+        options.sample.querySelectorAll('span[data-letter]').forEach(function(span) {
+            var letter = span.getAttribute('data-letter');
+            if (letter !== 'undefined') {
+                span.textContent = letter;
+            }
+        });
+        //and remove all the vestigial spans
+        options.sample.textContent = sample.textContent.trim();
+    }
+
+    function setupControls() {
+        if (options.controls.features) {
+            options.controls.features.addEventListener('change', function(evt) {
+                var ffs = [];
+                options.controls.features.querySelectorAll(':checked').forEach(function(input) {
+                    ffs.push('"' + input.value + '" 1');
+                });
+                options.sample.style.fontFeatureSettings = ffs.join(", ");
+            });
+        }
+    }
+
     function setupGlyphSelector() {
         var pua2letter = {};
-    
+
+        options.sample.addEventListener('paste', function(evt) {
+            //hide it to avoid FOIST (flash of inappropriately-styled text)
+            options.sample.style.opacity = '0';
+            
+            //event fires before the content is actually inserted, so delay reset for a sec
+            setTimeout(function() {
+                resetSample();
+                options.sample.style.opacity = '';
+            }, 10);
+        });    
+        
         //clone the selection object so that it can persist after the selection changes
         // and also ensure that the anchor is before the focus
         function cloneSelection() {

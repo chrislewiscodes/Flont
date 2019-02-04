@@ -23,15 +23,17 @@
 <body>
     <form>
         <label for='font-features'>Font features</label>
-        <select multiple id='font-features'>
-        </select>
+        <ul id='font-features'></ul>
         <samp contenteditable>All your 1690 glyphs are belong to us</samp>
     </form>
     
     <script>
         FontTester({
             'sample': 'samp',
-            'fontURL': 'infini-romain.otf'
+            'fontURL': 'infini-romain.otf',
+            'controls': {
+                'features': '#font-features'
+            }
         });
     </script>
 </body>
