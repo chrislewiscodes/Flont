@@ -207,7 +207,7 @@ window.FontTester = function(options) {
     
 
     function closeGAP() {
-        var gap = document.getElementById('glyph-alternates-popup');
+        var gap = document.getElementById('flont-popup');
         if (gap) {
             gap.parentNode.removeChild(gap);
         }
@@ -631,7 +631,7 @@ window.FontTester = function(options) {
                 return;
             }
             
-            var gap = document.getElementById('glyph-alternates-popup');
+            var gap = document.getElementById('flont-popup');
     
             var isOpen = gap !== null;
             var inPopup = isOpen && (evt.target === gap || gap.contains(evt.target));
@@ -701,7 +701,7 @@ window.FontTester = function(options) {
     
             if (hasAlts) {
                 var wrapper = document.createElement('div');
-                wrapper.id = 'glyph-alternates-popup';
+                wrapper.id = 'flont-popup';
                 wrapper.className = 'popup shadow';
                 
                 var pointer = document.createElement('aside');
