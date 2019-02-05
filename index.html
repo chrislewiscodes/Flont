@@ -23,7 +23,12 @@
 <body>
     <form>
         <label for='font-features'>Font features</label>
-        <ul id='font-features'></ul>
+        <select id='font-features'></select>
+        
+        <label for='font-size'>Size</label><input id='font-size' type='range' min='8' max='144' value='60'>
+        <label for='leading'>Leading</label><input id='leading' type='range' min='0.8' max='2' value='1' step='0.05'>
+        <label for='tracking'>Tracking</label><input id='tracking' type='range' min='-100' max='1000' value='0'>
+        
         <samp contenteditable>All your 1690 glyphs are belong to us</samp>
     </form>
     
@@ -32,7 +37,10 @@
             'sample': 'samp',
             'fontURL': 'infini-romain.otf',
             'controls': {
-                'features': '#font-features'
+                'features': '#font-features',
+                'size': '#font-size',
+                'leading': '#leading',
+                'tracking': '#tracking',
             }
         });
     </script>

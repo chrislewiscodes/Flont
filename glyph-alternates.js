@@ -17,10 +17,10 @@
      fontURL: 'https://mysite.com/fonts/webfont.woff', //either this or data-webfont-url attribute on sample element is required
      controls: {
          'size': '#font-size-input', //input that controls font size
-         'leading': '#line-height-input', //input that controls line height
-         'tracking': '#letter-spacing-input', //input that controls letter spacing
-         'foreground': '#fgcolor-input', //input that controls foreground color
-         'background': '#bgcolor-input', //input that controls background color,
+         'leading': '#line-height-input', //input that controls line height. Value: multiple of size. Typical range: 0.8 to 2.0
+         'tracking': '#letter-spacing-input', //input that controls letter spacing. Value: ‰ of size. Typical range: -100 to 100
+         'foreground': '#fgcolor-input', //input that controls foreground color. Value: any valid CSS color format
+         'background': '#bgcolor-input', //input that controls background color. Value: any valid CSS color format
          'features': '#feature-select', //an empty select or list element to be filled with toggleable OpenType features 
     })
  *
@@ -412,6 +412,11 @@ window.FontTester = function(options) {
 
     //when changing fonts or other major styling, reset the sample to plain text
     function resetSample() {
+        //some programs put <style> elements in the pasted HTML!
+        options.sample.querySelectorAll('style').forEach(function(el) {
+            el.parentNode.removeChild(el);
+        });
+
         //replace custom chars with plain text
         options.sample.querySelectorAll('span[data-letter]').forEach(function(span) {
             var letter = span.getAttribute('data-letter');
@@ -419,8 +424,9 @@ window.FontTester = function(options) {
                 span.textContent = letter;
             }
         });
+
         //and remove all the vestigial spans
-        options.sample.textContent = sample.textContent.trim();
+        options.sample.textContent = options.sample.textContent.trim();
     }
 
     function setupControls() {
@@ -433,6 +439,94 @@ window.FontTester = function(options) {
                 options.sample.style.fontFeatureSettings = ffs.join(", ");
             });
         }
+
+        var input2css = {
+            'size': 'fontSize',
+            'fontSize': 'fontSize',
+            'font-size': 'fontSize',
+            'leading': 'lineHeight',
+            'line-height': 'lineHeight',
+            'lineHeight': 'lineHeight',
+            'tracking': 'letterSpacing',
+            'letter-spacing': 'letterSpacing',
+            'letterSpacing': 'letterSpacing',
+            'foreground': 'color',
+            'fgcolor': 'color',
+            'color': 'color',
+            'background': 'background',
+            'bgcolor': 'background'
+        };
+
+        // from inputs to specimen
+        function onControlChange(evt) {
+            var input = evt.target;
+            var cssrule = input.getAttribute('data-css-rule');
+            var actualValues = getComputedStyle(options.sample);
+            var em = parseFloat(actualValues.fontSize);
+
+            if (!cssrule) {
+                return;
+            }
+
+            switch (cssrule) {
+            //pixels
+            case 'fontSize':
+                options.sample.style[cssrule] = input.value + 'px';
+                break;
+            //per mille em
+            case 'letterSpacing':
+                options.sample.style[cssrule] = (parseFloat(input.value) / 1000) + 'em';
+                break;
+            //just use literal value
+            default:
+                options.sample.style[cssrule] = input.value;
+                break;
+            }
+        }
+        
+        //convert input value ranges to standard units, and hook up change events
+        input2css.forEach(function(cssrule, name) {
+            var input = options.controls[name];
+            
+            if (!input) {
+                return;
+            }
+
+            var actualValues = getComputedStyle(options.sample);
+            var em = parseFloat(actualValues.fontSize);
+            var actualValue = parseFloat(actualValues[cssrule]);
+
+            switch (cssrule) {
+            case 'lineHeight':
+                if (input.max > 3) {
+                    //make sure inputs are in em multiples
+                    input.min /= em;
+                    input.max /= em;
+                }
+                //convert pixels to em multiple
+                actualValue /= em;
+                break;
+            case 'letterSpacing':
+                if (Math.abs(input.min) <= 1 && Math.abs(input.max <= 1)) {
+                    //assume em, convert to per mille
+                    input.min *= 1000;
+                    input.max *= 1000;
+                }
+                if (isNaN(actualValue)) {
+                    actualValue = 0;
+                }
+
+                //actualValue will be in px, convert to per mille em
+                actualValue = 1000 * actualValue / em;
+                break;
+            }
+            //update input to match specimen
+            input.setAttribute('data-css-rule', cssrule);
+            input.addEventListener('change', onControlChange);
+            input.addEventListener('input', onControlChange);
+            input.value = actualValue;
+            input.trigger('change');
+        });
     }
 
     function setupGlyphSelector() {
@@ -644,7 +738,7 @@ window.FontTester = function(options) {
                 //and size the grid into a pleasing shape: more or less square but also fitting in the window
                 var square = Math.ceil(Math.sqrt(boxes.length)); //ideal square shape
                 var max = Math.floor(Math.min(winWidth-30, 720)/widest); //but not too wide
-                var columns = Math.min(boxes.length, square, max);
+                var columns = Math.min(boxes.length, max, (square + max) / 2); //actually skew wider than square
                 var rows = Math.ceil(boxes.length / columns);
                 var popupWidth = columns * widest;
                 wrapper.style.width = (popupWidth+1) + 'px';
