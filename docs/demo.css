@@ -1,0 +1,70 @@
+/**
+ * @license
+ * MyFonts Webfont Build ID 3715614, 2019-02-05T12:45:09-0500
+ * 
+ * The fonts listed in this notice are subject to the End User License
+ * Agreement(s) entered into by the website owner. All other parties are 
+ * explicitly restricted from using the Licensed Webfonts(s).
+ * 
+ * You may obtain a valid license at the URLs below.
+ * 
+ * Webfont: Ganache by Laura Worthington
+ * URL: https://www.myfonts.com/fonts/laura-worthington/ganache/regular/
+ * Copyright: Copyright (c) 2013 by Laura Worthington. All rights reserved.
+ * Licensed pageviews: 20,000
+ * 
+ * 
+ * License: https://www.myfonts.com/viewlicense?type=web&buildid=3715614
+ * 
+ * © 2019 MyFonts Inc
+*/
+
+
+/* @import must be at top of file, otherwise CSS will not work */
+@import url("//hello.myfonts.net/count/38b21e");
+
+  
+@font-face {
+    font-family: 'Ganache';
+    src: url('webfonts/38B21E_0_0.woff2') format('woff2'), url('webfonts/38B21E_0_0.woff') format('woff');
+}
+
+@font-face {
+    font-family: "Glyph Alts Test";
+    src: url("infini-romain.otf") format("opentype");
+}
+
+html {
+    font-family: sans-serif;
+}
+
+header {
+    padding-bottom: 3rem;
+}
+
+h1 {
+    font-family: "Ganache", cursive;
+    font-size: 144px;
+    font-weight: normal;
+    line-height: 1;
+    margin: 0;
+    padding: 0.333em 0;
+    text-align: center;
+}
+
+h2 {
+    margin: 0;
+    padding: 0;
+    font-size: 1.2rem;
+    font-weight: 300;
+    text-align: center;
+}
+
+samp {
+    display: block;
+    font-size: 60px;
+    font-family: "Glyph Alts Test", "Comic Sans MS";
+    padding: 1rem;
+}
+ 
+

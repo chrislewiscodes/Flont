@@ -94,7 +94,6 @@ window.FontTester = function(options) {
         'zero': "Slashed Zero"
     };
 
-
     //initialize!
     setupPolyfills();
 
