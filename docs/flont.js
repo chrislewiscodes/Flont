@@ -189,6 +189,13 @@ window.FontTester = function(options) {
         options.controls.forEach(function(v, k) {
             options.controls[k] = getElement(v);
         });
+        
+        var highlight = options.highlightColor || options['highlight-color'];
+        if (highlight) {
+            var temp = document.createElement('style');
+            temp.textContent = "#flont-popup li.selected { background: " + highlight + "; }";
+            document.head.appendChild(temp);
+        }
     }
 
     function smoothScroll(y, el) {

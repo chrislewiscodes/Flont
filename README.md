@@ -33,6 +33,8 @@ FontTester({
       'tracking': '#letter-spacing-input', //input that controls letter spacing
       'foreground': '#fgcolor-input', //input that controls foreground color
       'background': '#bgcolor-input', //input that controls background color,
-      'features': '#feature-select', //an empty select or list element to be filled with toggleable OpenType features 
+      'features': '#feature-select', //an empty select or list element to be filled with toggleable OpenType features
+  },
+  highlightColor: '#beefed', //optional CSS color to be used for highlights in the UI, e.g. "current glyph" callout
  })
 ```
