@@ -519,6 +519,37 @@ window.FontTester = function(options) {
                 //actualValue will be in px, convert to per mille em
                 actualValue = 1000 * actualValue / em;
                 break;
+            case 'color': case 'background':
+                if (input.type === 'color') {
+                    //color inputs *only* accept #RRGGBB values,
+                    //while computed value is rgba(r, g, b, a), so we need to convert!
+                    try {
+                        var rgba = actualValues[cssrule].match(/rgba?\((.+?)\)/)[1].split(/,\s*/);
+                        if (rgba) {
+                            if (rgba.length >= 4 && rgba[3] == 0) {
+                                actualValue = '#ffffff';
+                            } else {
+                                var r = parseInt(rgba[0]).toString(16);
+                                var g = parseInt(rgba[1]).toString(16);
+                                var b = parseInt(rgba[2]).toString(16);
+                                if (r.length === 1) {
+                                    r = '0' + r;
+                                }
+                                if (g.length === 1) {
+                                    g = '0' + g;
+                                }
+                                if (b.length === 1) {
+                                    b = '0' + b;
+                                }
+                                actualValue = '#' + r + g + b;
+                            }
+                        }
+                    } catch (e) {
+                        console.log("Error handling " + cssrule + ": " + e.toString());
+                        actualValue = cssrule === 'background' ? '#ffffff' : '#000000';
+                    }
+                }
+                break;
             }
             //update input to match specimen
             input.setAttribute('data-css-rule', cssrule);
