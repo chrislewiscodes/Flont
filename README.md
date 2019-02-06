@@ -38,3 +38,13 @@ FontTester({
   highlightColor: '#beefed', //optional CSS color to be used for highlights in the UI, e.g. "current glyph" callout
  })
 ```
+
+## About the project
+
+Flont was written by [Chris Lewis](https://chrislewis.codes/), based on work done originally for
+[Laura Worthington Design](https://lauraworthingtondesign.com/news/article/the-type-tester).
+Many thanks to Laura for essentially financing the development of this tool, and for agreeing to
+release it to the public!
+
+The [Flont demo site](https://flont.chrislewis.codes/) was designed by [Nick Sherman](https://nicksherman.com/)
+of [Hex Projects](https://hex.xyz/).
