@@ -4,7 +4,7 @@
 /*
  * Ultra-simple usage:
  *
- * FontTester('#specimen-element[data-webfont-url]') 
+ * FontTester('#specimen-element') 
  * 
  * Call with a single HTMLElement object or CSS selector string, representing the font-specimen display element.
  * That element needs to have a `data-webfont-url` attribute on it containing the URL to a TTF, OTF, or WOFF font.
@@ -14,7 +14,6 @@
  *
  * FontTester({
      sample: '#specimen-element', //required
-     fontURL: 'https://mysite.com/fonts/webfont.woff', //either this or data-webfont-url attribute on sample element is required
      controls: {
          'size': '#font-size-input', //input that controls font size
          'leading': '#line-height-input', //input that controls line height. Value: multiple of size. Typical range: 0.8 to 2.0
@@ -173,12 +172,9 @@ window.FontTester = function(options) {
         }
     
         //valid fontURL ?
+        getWebfontURL();
         if (!options.fontURL) {
-            options.fontURL = options.sample.getAttribute('data-webfont-url');
-        }
-        
-        if (!options.fontURL) {
-            optionError('fontURL', 'missing');
+            optionError('fontURL', 'Unable to find valid webfont URL in @font-face rules. Note that WOFF2 is not yet supported.');
         }
     
         //linking up controls is optional
@@ -218,7 +214,54 @@ window.FontTester = function(options) {
             gap.parentNode.removeChild(gap);
         }
     }
-    
+
+    //figure out the webfont URL for the sample font
+    function getWebfontURL() {
+        //go through CSS stylesheets and pull out all the font-family to url mappings
+        var name2url = {};
+        var s, sl, sheet;
+        var r, rl, css, fam, urls;
+        for (s=0, sl=document.styleSheets.length; s < sl; s++) {
+            sheet = document.styleSheets[s];
+            for (r=0, rl=sheet.cssRules.length; r < rl; r++) {
+                if (sheet.cssRules[r] instanceof CSSFontFaceRule) {
+                    css = sheet.cssRules[r].cssText;
+                    fam = css.match(/font-family\s*:\s*['"]([^'",;]+)/);
+                    urls = css.match(/url\([^\)]+\)(?:\s+format\([^\)]+\))?/g);
+                    if (fam && urls) {
+                        var chosen;
+                        urls.forEach(function(url) {
+                            if (chosen) {
+                                return;
+                            }
+                            var m = url.match(/url\(\s*['"]?([^'"\)]+)['"]?\s*\)(?:\s+format\(['"]?([^\s'"]+))?/);
+                            if (m[2]) {
+                                if (m[2] === 'woff' || m[2] === 'truetype' || m[2] === 'opentype') {
+                                    chosen = m[1];
+                                }
+                            } else if (m[1].match(/(woff|ttf|otf)$/)) {
+                                chosen = m[1];
+                            }
+                        });
+                        if (chosen) {
+                            name2url[fam[1].trim()] = chosen;
+                        }
+                    }
+                }
+            }
+        }
+
+        var found = false;
+        getComputedStyle(options.sample).fontFamily.split(',').forEach(function(fontname) {
+            fontname = fontname.trim().replace(/^['"]/, '').replace(/['"]$/, '').trim();
+            if (fontname in name2url) {
+                found = options.fontURL = name2url[fontname];
+            }
+        });
+        
+        return found;
+    }
+
     //populate features dropdown
     function populateFeatures(font) {
         var select = options.controls.features;
