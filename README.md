@@ -26,8 +26,8 @@ This will set that element up with popup glyph-alternates selectors when the use
 ```
 FontTester({
   sample: '#specimen-element', //required
-  fontURL: 'https://mysite.com/fonts/webfont.woff', //either this or `data-webfont-url` attribute on sample element is required
-  controls: {
+  controls: { //optional form controls you can hook up to change aspects of the specimen
+      'font': '#font-select', //a select element, to change the displayed font
       'size': '#font-size-input', //input that controls font size
       'leading': '#line-height-input', //input that controls line height
       'tracking': '#letter-spacing-input', //input that controls letter spacing

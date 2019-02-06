@@ -30,8 +30,18 @@
 }
 
 @font-face {
-    font-family: "Glyph Alts Test";
-    src: url("webfonts/38B21E_0_0.woff") format("woff");
+    font-family: 'Infini Regular';
+    src: url("webfonts/infini-regular.woff") format("woff");
+}
+
+@font-face {
+    font-family: 'Infini Bold';
+    src: url("webfonts/infini-bold.woff") format("woff");
+}
+
+@font-face {
+    font-family: 'Infini Italic';
+    src: url("webfonts/infini-italic.woff") format("woff");
 }
 
 html {
@@ -63,7 +73,7 @@ h2 {
 samp {
     display: block;
     font-size: 60px;
-    font-family: "Glyph Alts Test", "Comic Sans MS";
+    font-family: "Ganache", "Comic Sans MS";
     padding: 1rem;
 }
  

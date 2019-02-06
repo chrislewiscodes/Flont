@@ -171,12 +171,6 @@ window.FontTester = function(options) {
             optionError('sample', 'must be element or CSS selector');
         }
     
-        //valid fontURL ?
-        getWebfontURL();
-        if (!options.fontURL) {
-            optionError('fontURL', 'Unable to find valid webfont URL in @font-face rules. Note that WOFF2 is not yet supported.');
-        }
-    
         //linking up controls is optional
         if (!options.controls) {
             options.controls = {};
@@ -221,15 +215,16 @@ window.FontTester = function(options) {
         var name2url = {};
         var s, sl, sheet;
         var r, rl, css, fam, urls;
+        var chosen;
         for (s=0, sl=document.styleSheets.length; s < sl; s++) {
             sheet = document.styleSheets[s];
             for (r=0, rl=sheet.cssRules.length; r < rl; r++) {
                 if (sheet.cssRules[r] instanceof CSSFontFaceRule) {
                     css = sheet.cssRules[r].cssText;
-                    fam = css.match(/font-family\s*:\s*['"]([^'",;]+)/);
+                    fam = css.match(/font-family\s*:\s*['"]?([^'",;]+)/);
                     urls = css.match(/url\([^\)]+\)(?:\s+format\([^\)]+\))?/g);
                     if (fam && urls) {
-                        var chosen;
+                        chosen = null;
                         urls.forEach(function(url) {
                             if (chosen) {
                                 return;
@@ -253,12 +248,14 @@ window.FontTester = function(options) {
 
         var found = false;
         getComputedStyle(options.sample).fontFamily.split(',').forEach(function(fontname) {
+            if (found) {
+                return;
+            }
             fontname = fontname.trim().replace(/^['"]/, '').replace(/['"]$/, '').trim();
             if (fontname in name2url) {
                 found = options.fontURL = name2url[fontname];
             }
         });
-        
         return found;
     }
 
@@ -318,7 +315,13 @@ window.FontTester = function(options) {
     }
     
     function populateAlternates(callback) {
-        window.alts = allAlternates[options.fontURL] = {};
+        var fontURL = getWebfontURL();
+        if (!fontURL) {
+            console.log("Couldn't find valid webfont URL in CSS @font-face rules.");
+            return;
+        }
+
+        allAlternates[options.fontURL] = {};
     
         window.opentype.load(options.fontURL, function(err, font) {
             if (err) {
@@ -490,6 +493,7 @@ window.FontTester = function(options) {
         }
 
         var input2css = {
+            'font': 'fontFamily',
             'size': 'fontSize',
             'fontSize': 'fontSize',
             'font-size': 'fontSize',
@@ -518,6 +522,11 @@ window.FontTester = function(options) {
             }
 
             switch (cssrule) {
+            //change font
+            case 'fontFamily':
+                options.sample.style[cssrule] = input.tagName === 'select' ? input.querySelector('option:checked').value : input.value;
+                setTimeout(populateAlternates);
+                break;
             //pixels
             case 'fontSize':
                 options.sample.style[cssrule] = input.value + 'px';
@@ -546,6 +555,9 @@ window.FontTester = function(options) {
             var actualValue = parseFloat(actualValues[cssrule]);
 
             switch (cssrule) {
+            case 'fontFamily':
+                actualValue = getPrimaryFontFamily(actualValues[cssrule]);
+                break;
             case 'lineHeight':
                 if (input.max > 3) {
                     //make sure inputs are in em multiples
@@ -604,8 +616,16 @@ window.FontTester = function(options) {
             input.setAttribute('data-css-rule', cssrule);
             input.addEventListener('change', onControlChange);
             input.addEventListener('input', onControlChange);
-            input.value = actualValue;
-            input.trigger('change');
+
+            if (input.tagName === 'SELECT') {
+                var opt = input.querySelector('option[value="' + actualValue + '"]');
+                if (opt) {
+                    opt.selected = true;
+                }
+            } else {
+                input.value = actualValue;
+            }
+            //input.trigger('change');
         });
     }
 
@@ -817,8 +837,8 @@ window.FontTester = function(options) {
     
                 //and size the grid into a pleasing shape: more or less square but also fitting in the window
                 var square = Math.ceil(Math.sqrt(boxes.length)); //ideal square shape
-                var max = Math.floor(Math.min(winWidth-30, 720)/widest); //but not too wide
-                var columns = Math.min(boxes.length, max, (square + max) / 2); //actually skew wider than square
+                var max = Math.floor((winWidth-30)/widest); //but not too wide
+                var columns = Math.min(boxes.length, max, Math.ceil((max + square) / 2)); //actually skew wider than square
                 var rows = Math.ceil(boxes.length / columns);
                 var popupWidth = columns * widest;
                 wrapper.style.width = (popupWidth+1) + 'px';

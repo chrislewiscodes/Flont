@@ -2,7 +2,7 @@
 <html lang="en">
     
 <head>
-    <title>Glyph alternates demo</title>
+    <title>Flont — Font Tester Library</title>
     <link rel="stylesheet" href="demo.css">
     <link rel="stylesheet" href="flont.css">
     <script src="flont.js"></script>
@@ -19,6 +19,14 @@
 
     <section id='demo'>
         <form>
+            <label for='choose-font'>Choose font</label>
+            <select id='choose-font'>
+                <option value='Ganache'>Ganache</label>
+                <option value='Infini Regular'>Infini Regular</option>
+                <option value='Infini Bold'>Infini Bold</option>
+                <option value='Infini Italic'>Infini Italic</option>
+            </select>
+
             <label for='font-features'>Font features</label>
             <select id='font-features'></select>
             
@@ -37,6 +45,7 @@
         FontTester({
             'sample': '#demo samp',
             'controls': {
+                'font': '#choose-font',
                 'features': '#font-features',
                 'size': '#font-size',
                 'leading': '#leading',
