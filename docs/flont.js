@@ -99,8 +99,8 @@ window.FontTester = function(options) {
     //make sure we have everything we need
     sanitizeOptions();
 
-    //load webfont and parse features
-    verifyDependencies(populateAlternates);
+    //do all the stuff that needs to happen for a new font
+    onFontChange();
 
     //link up controls to sample
     setupControls();
@@ -462,9 +462,14 @@ window.FontTester = function(options) {
         });
     }
 
-    //when changing fonts or other major styling, reset the sample to plain text
+    function onFontChange() {
+        verifyDependencies(populateAlternates);
+        resetSample();
+    }
+
+    //when changing fonts or other major styling, reset the sample to plain text 
     function resetSample() {
-        //some programs put <style> elements in the pasted HTML!
+        //some programs put <style> elements in pasted HTML!
         options.sample.querySelectorAll('style').forEach(function(el) {
             el.parentNode.removeChild(el);
         });
@@ -525,7 +530,7 @@ window.FontTester = function(options) {
             //change font
             case 'fontFamily':
                 options.sample.style[cssrule] = input.tagName === 'select' ? input.querySelector('option:checked').value : input.value;
-                setTimeout(populateAlternates);
+                onFontChange();
                 break;
             //pixels
             case 'fontSize':
@@ -724,6 +729,7 @@ window.FontTester = function(options) {
     
             //no selection, no popup
             if (selection.isCollapsed || !selectedText.length) {
+                previousSelection = selection;
                 return closeGAP();
             }
     
