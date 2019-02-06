@@ -31,7 +31,7 @@
 
 @font-face {
     font-family: "Glyph Alts Test";
-    src: url("infini-romain.otf") format("opentype");
+    src: url("webfonts/38B21E_0_0.woff") format("woff");
 }
 
 html {
