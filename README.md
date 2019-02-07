@@ -1,5 +1,5 @@
 # Flont
-A full-featured Javascript library for creating interactive web font specimens.
+A Javascript library for creating interactive web font specimens.
 
 Web designers can style up their own specimen layout, then plug in Flont to hook up 
 form controls to modify various aspects of the specimen's typography. Flont's showcase
@@ -14,12 +14,11 @@ inclusion in public projects.
 ### Ultra-simple mode:
 
 ```
-FontTester('#specimen-element[data-webfont-url]')
+FontTester('#specimen-element')
 ```
 
 Call with a single element object or CSS selector string, representing the font-specimen display element.
-That element needs to have a `data-webfont-url` attribute on it containing the URL to a TTF, OTF, or WOFF font.
-This will set that element up with popup glyph-alternates selectors when the user selects text.
+This will set that element up with popup glyph-alternates selection UI when the user selects text.
 
 ### Flexible mode:
 
@@ -43,8 +42,5 @@ FontTester({
 
 Flont was written by [Chris Lewis](https://chrislewis.codes/), based on work done originally for
 [Laura Worthington Design](https://lauraworthingtondesign.com/news/article/the-type-tester).
-Many thanks to Laura for essentially financing the development of this tool, and for agreeing to
-release it to the public!
-
-The [Flont demo site](https://flont.chrislewis.codes/) was designed by [Nick Sherman](https://nicksherman.com/)
-of [Hex Projects](https://hex.xyz/).
+Many thanks to Laura for essentially financing the development of Flont, and for being game
+to release her signature website feature as a public tool!
