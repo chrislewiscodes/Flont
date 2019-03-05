@@ -20,7 +20,7 @@
     </section>
 
     <section id='demo'>
-        <form>
+        <form id='controls'>
             <label for='choose-font'>Choose font</label>
             <select id='choose-font'>
                 <option value='Ganache'>Ganache</label>
@@ -36,11 +36,17 @@
             <label for='leading'>Leading</label><input id='leading' type='range' min='0.8' max='2' value='1' step='0.05'>
             <label for='tracking'>Tracking</label><input id='tracking' type='range' min='-100' max='1000' value='0'>
             
+            <select name='alignment'>
+                <option value='left'>Left</option>
+                <option value='center' selected>Center</option>
+                <option value='right'>Right</option>
+            </select>
+            
             <label for='fg'>FG</label> <input type='color' id='fg' value='#000000'>
             <label for='bg'>BG</label> <input type='color' id='bg' value='#ffffff'>
-            
-            <samp contenteditable>All your 1690 glyphs are belong to us</samp>
         </form>
+
+        <samp contenteditable>All your 1690 glyphs are belong to us</samp>
     </section>
     
     <script>
@@ -54,6 +60,7 @@
                 'tracking': '#tracking',
                 'foreground': '#fg',
                 'background': '#bg',
+                'alignment': '#demo [name=alignment]'
             },
             'highlightColor': '#58008',
         });

@@ -20,6 +20,7 @@
          'tracking': '#letter-spacing-input', //input that controls letter spacing. Value: ‰ of size. Typical range: -100 to 100
          'foreground': '#fgcolor-input', //input that controls foreground color. Value: any valid CSS color format
          'background': '#bgcolor-input', //input that controls background color. Value: any valid CSS color format
+         'alignment': '#tester [name=alignment]', //either a select or set of radio buttons that contain left/center/right options
          'features': '#feature-select', //an empty select or list element to be filled with toggleable OpenType features 
     })
  *
@@ -512,7 +513,8 @@ window.FontTester = function(options) {
             'fgcolor': 'color',
             'color': 'color',
             'background': 'background',
-            'bgcolor': 'background'
+            'bgcolor': 'background',
+            'alignment': 'text-align'
         };
 
         // from inputs to specimen

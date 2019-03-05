@@ -52,6 +52,11 @@ header {
     padding-bottom: 3rem;
 }
 
+#controls {
+    text-align: center;
+    line-height: 2;
+}
+
 h1 {
     font-family: "Ganache", cursive;
     font-size: 144px;
@@ -75,6 +80,7 @@ samp {
     font-size: 60px;
     font-family: "Ganache", "Comic Sans MS";
     padding: 1rem;
+    text-align: center;
 }
  
 
