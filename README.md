@@ -14,7 +14,7 @@ inclusion in public projects.
 ### Ultra-simple mode:
 
 ```
-FontTester('#specimen-element')
+Flont('#specimen-element')
 ```
 
 Call with a single element object or CSS selector string, representing the font-specimen display element.
@@ -23,7 +23,7 @@ This will set that element up with popup glyph-alternates selection UI when the 
 ### Flexible mode:
 
 ```
-FontTester({
+Flont({
   sample: '#specimen-element', //required
   controls: { //optional form controls you can hook up to change aspects of the specimen
       'font': '#font-select', //a select element, to change the displayed font

@@ -4,7 +4,7 @@
 /*
  * Ultra-simple usage:
  *
- * FontTester('#specimen-element') 
+ * Flont('#specimen-element') 
  * 
  * Call with a single HTMLElement object or CSS selector string, representing the font-specimen display element.
  * That element needs to have a `data-webfont-url` attribute on it containing the URL to a TTF, OTF, or WOFF font.
@@ -12,7 +12,7 @@
  *
  * Flexible usage:
  *
- * FontTester({
+ * Flont({
      sample: '#specimen-element', //required
      controls: {
          'size': '#font-size-input', //input that controls font size
@@ -27,7 +27,7 @@
  */
 
 
-window.FontTester = function(options) {
+window.Flont = function(options) {
 
     var dependencies = {
         'opentype': 'https://cdn.jsdelivr.net/npm/opentype.js@latest/dist/opentype.min.js'
@@ -137,7 +137,7 @@ window.FontTester = function(options) {
 
     function sanitizeOptions() {
         function optionError(opt, msg) {
-            throw "FontTester: Invalid options" + (opt ? ': ' + opt : '') + (msg ? ' ' + msg : '');
+            throw "Flont: Invalid options" + (opt ? ': ' + opt : '') + (msg ? ' ' + msg : '');
         }
 
         function getElement(el, multiple) {
