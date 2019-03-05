@@ -816,7 +816,7 @@ window.Flont = function(options) {
                         li.textContent = info.unicode;
                         pua2letter[info.unicode] = selectedText;
                     } else {
-                        li.className.addClass('ffs');
+                        li.addClass('ffs');
                         li.textContent = selectedText;
                         li.style.fontFeatureSettings = '"' + info.feature + '" 1';
                     }
