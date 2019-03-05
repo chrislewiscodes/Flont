@@ -24,7 +24,7 @@
     })
  *
  */
- 
+
 
 window.FontTester = function(options) {
 
@@ -107,9 +107,9 @@ window.FontTester = function(options) {
 
     //set up the sample element for glyph-alternate replacement
     setupGlyphSelector();
-    
+
     //and that's it! 
-   
+
     //everything after this is just function definitions
     function verifyDependencies(callback) {
         var toLoad = Object.keys(dependencies).length;
@@ -133,12 +133,12 @@ window.FontTester = function(options) {
             }
         });
     }
-    
+
     function sanitizeOptions() {
         function optionError(opt, msg) {
             throw "FontTester: Invalid options" + (opt ? ': ' + opt : '') + (msg ? ' ' + msg : '');
         }
-        
+
         function getElement(el, multiple) {
             var qs = multiple ? document.querySelectorAll.bind(document) : document.querySelector.bind(document);
             if (typeof el === 'string') {
@@ -153,24 +153,24 @@ window.FontTester = function(options) {
             }
             return null;
         }
-    
+
         var temp;
-        
+
         //if they passed in a plain element, treat it as the sample
         if (temp = getElement(options)) {
             options = {'sample': temp};
         }
-    
+
         if (typeof options !== 'object') {
             optionError('options', 'must be element or object');
         }
-    
+
         //sanity check on inputs
         options.sample = getElement(options.sample);
         if (!options.sample) {
             optionError('sample', 'must be element or CSS selector');
         }
-    
+
         //linking up controls is optional
         if (!options.controls) {
             options.controls = {};
@@ -179,7 +179,7 @@ window.FontTester = function(options) {
         Object.forEach(options.controls, function(v, k) {
             options.controls[k] = getElement(v);
         });
-        
+
         var highlight = options.highlightColor || options['highlight-color'];
         if (highlight) {
             var temp = document.createElement('style');
@@ -191,8 +191,8 @@ window.FontTester = function(options) {
     function smoothScroll(y, el) {
         (el || window).scrollTo({'left': 0, 'top': y, 'behavior': 'smooth'});
     }
-    
-    
+
+
     // return the first value from a CSS font-family list
     function getPrimaryFontFamily(families) {
         if (families instanceof HTMLElement) {
@@ -200,7 +200,7 @@ window.FontTester = function(options) {
         }
         return families.split(",")[0].trim().replace(/["']/g, '');
     }
-    
+
 
     function closeGAP() {
         var gap = document.getElementById('flont-popup');
@@ -272,12 +272,12 @@ window.FontTester = function(options) {
 
         //styleset matcher
         var ssre = /ss\d\d/;
-        
+
         //features to be enabled by default
         var defaults = /liga|calt|r.../; //"r" features usually mean "required" and probably can't be disabled
 
         var seen = {};
-        
+
         if (!font.tables.gsub || !font.tables.gsub.features) {
             //there ain't no features
             return;
@@ -313,7 +313,7 @@ window.FontTester = function(options) {
 
         select.trigger('change');
     }
-    
+
     function populateAlternates(callback) {
         var fontURL = getWebfontURL();
         if (!fontURL) {
@@ -322,24 +322,24 @@ window.FontTester = function(options) {
         }
 
         allAlternates[options.fontURL] = {};
-    
+
         window.opentype.load(options.fontURL, function(err, font) {
             if (err) {
                 console.log("ERROR LOADING " + options.fontURL + ': ' + err);
                 return;
             }
-    
+
             window.font = font;
 
             populateFeatures(font);
-            
+
             //populate glyph alternates
             var gsub = font.tables.gsub;
-            
+
             if (!gsub) {
                 return;
             }
-            
+
             var reversecmap = {};
             Object.forEach(font.tables.cmap.glyphIndexMap, function(g, u) {
                 reversecmap[g] = String.fromCharCode(u);
@@ -367,7 +367,7 @@ window.FontTester = function(options) {
                     console.log(e);
                 }
             }
-            
+
             var unhandled = {};
             gsub.features.forEach(function(f) {
                 var tag = f.tag;
@@ -451,7 +451,7 @@ window.FontTester = function(options) {
                     });
                 });
             });
-            
+
             if (Object.keys(unhandled).length) {
                 console.log("Unhandled features: ", unhandled);
             }
@@ -546,11 +546,11 @@ window.FontTester = function(options) {
                 break;
             }
         }
-        
+
         //convert input value ranges to standard units, and hook up change events
         Object.forEach(input2css, function(cssrule, name) {
             var input = options.controls[name];
-            
+
             if (!input) {
                 return;
             }
@@ -640,23 +640,23 @@ window.FontTester = function(options) {
         options.sample.addEventListener('paste', function(evt) {
             //hide it to avoid FOIST (flash of inappropriately-styled text)
             options.sample.style.opacity = '0';
-            
+
             //event fires before the content is actually inserted, so delay reset for a sec
             setTimeout(function() {
                 resetSample();
                 options.sample.style.opacity = '';
             }, 10);
         });    
-        
+
         //clone the selection object so that it can persist after the selection changes
         // and also ensure that the anchor is before the focus
         function cloneSelection() {
             var selection = window.getSelection();
-    
+
             var backward = selection.isCollapsed
                 || (selection.anchorNode === selection.focusNode && selection.anchorOffset > selection.focusOffset)
                 || (selection.anchorNode.compareDocumentPosition(selection.focusNode) & Node.DOCUMENT_POSITION_PRECEDING);
-    
+
             return {
                 'anchorNode': backward ? selection.focusNode : selection.anchorNode,
                 'anchorOffset': backward ? selection.focusOffset : selection.anchorOffset,
@@ -667,7 +667,7 @@ window.FontTester = function(options) {
                 'toString': function() { return this.text; }
             };
         }
-    
+
         //find the relevant "parent" of selected text.
         // if an alternate has already been selected, will return the parent span
         // otherwise the text node the selection is part of
@@ -679,9 +679,9 @@ window.FontTester = function(options) {
             }
             return node;
         }
-        
+
         var previousSelection;
-        function selectionChanged() {
+        function didSelectionReallyChange() {
             if (!previousSelection) {
                 return true;
             }
@@ -693,100 +693,104 @@ window.FontTester = function(options) {
                 && previousSelection.focusOffset === selection.focusOffset
             );
         }
-    
+
         var ignoreSelectionChange = false;
         function onSelectionChange(evt) {
             if (ignoreSelectionChange) {
                 return;
             }
-            
+
             //ignore mouse events with secondary buttons
             if ('button' in evt && evt.button > 0) {
                 return;
             }
-            
+
             var gap = document.getElementById('flont-popup');
-    
-            var isOpen = gap !== null;
-            var inPopup = isOpen && (evt.target === gap || gap.contains(evt.target));
-            var inSample = evt.target === options.sample || options.sample.contains(evt.target);
-    
-            //console.log(evt.type, isOpen, inPopup, inSample);
-    
+
             var selection = cloneSelection();
             var selectedText = selection.toString().trim();
-    
-    
+
+            var isOpen = gap !== null;
+            var inPopup = isOpen && (evt.target === gap || gap.contains(evt.target));
+            var inSample = options.sample.contains(selection.anchorNode) && options.sample.contains(selection.focusNode);
+
+            //console.log(evt, isOpen, inPopup, inSample);
+
             //always close on close button
             if (inPopup && evt.target.closest('.close')) {
                 return closeGAP();
             }
-    
+
             //clicking inside the popup shouldn't close the popup
             if (inPopup) {
                 return;
             }
-    
+
+            //don't open the popup for random selections!
+            if (evt.type === 'selectionchange' && !isOpen && !inSample) {
+                return;
+            }
+
             //no selection, no popup
             if (selection.isCollapsed || !selectedText.length) {
                 previousSelection = selection;
                 return closeGAP();
             }
-    
+
             //not even going to deal with crossing elements yet
             if (selection.anchorNode !== selection.focusNode) {
                 return closeGAP();
             }
-    
+
             //close on click outside
             if (evt.type !== 'selectionchange' && !inPopup && !inSample) {
                 return closeGAP();
             }
-    
+
             //ignore events if selection hasn't changed
-            if (!selectionChanged()) {
+            if (!didSelectionReallyChange()) {
                 return;
             }
-    
-    
+
+
             previousSelection = selection;
-    
-    
+
+
             //see if we have already applied a feature to this selection
             var selectedSpan, parent = selection.anchorNode.parentNode;
             if (parent.tagName === 'SPAN' && (parent.hasAttribute('data-letter') || parent.textContent === selectedText)) {
                 selectedSpan = selection.anchorNode.parentNode;
             }
-            
+
             //convert PUA unicodes back into their original letters
             if (selectedText in pua2letter) {
                 selectedText = pua2letter[selectedText];
             } else if (selectedSpan && selectedSpan.hasAttribute('data-letter')) {
                 selectedText = selectedSpan.getAttribute('data-letter');
             }
-            
+
             //now we can get to work!
             var hasAlts = false, allAlts = {};
-    
+
             //if you only want to match exact string...
             if (options.fontURL in allAlternates && selectedText in allAlternates[options.fontURL]) {
                 allAlts = allAlternates[options.fontURL][selectedText];
                 hasAlts = true;
             }
-    
+
             if (hasAlts) {
                 var wrapper = document.createElement('div');
                 wrapper.id = 'flont-popup';
                 wrapper.className = 'popup shadow';
-                
+
                 var pointer = document.createElement('aside');
                 wrapper.appendChild(pointer);
-                
+
                 var alternates = document.createElement('ul');
                 alternates.style.fontFamily = getComputedStyle(options.sample).fontFamily;
-        
+
                 wrapper.appendChild(alternates);
-        
+
                 var alreadySelected = selectedSpan && parseInt(selectedSpan.getAttribute('data-index'));
                 var i = 0;
                 var nothingSpecial = document.createElement('li');
@@ -804,7 +808,7 @@ window.FontTester = function(options) {
                         li.className = 'selected';
                     }
                     li.setAttribute('data-index', i++);
-                    
+
                     if (info.unicode) {
                         li.addClass('pua');
                         li.textContent = info.unicode;
@@ -814,33 +818,33 @@ window.FontTester = function(options) {
                         li.textContent = selectedText;
                         li.style.fontFeatureSettings = '"' + info.feature + '" 1';
                     }
-    
+
                     li.style.paddingLeft = (0.25-info.left) + 'em';
                     li.style.paddingRight = (0.25-info.right) + 'em';
-    
+
                     alternates.appendChild(li);
                 });
-    
+
                 //really doing it now!
-                
+
                 //get rid of existing popup, if any
                 closeGAP();
-                
+
                 document.body.appendChild(wrapper);
-    
+
                 //make all boxes the same size for a nice grid
                 var boxes = alternates.childNodes;
                 var winWidth = document.documentElement.clientWidth;
                 var bodyWidth = document.body.getBoundingClientRect().width;
                 var sampWidth = options.sample.getBoundingClientRect().width;
-                
+
                 var widest = 0;
                 boxes.forEach(function(box) {
                     widest = Math.max(widest, Math.ceil(box.getBoundingClientRect().width));
                 });
-    
+
                 boxes.forEach(function(box) { box.style.width = widest + 'px'; });
-    
+
                 //and size the grid into a pleasing shape: more or less square but also fitting in the window
                 var square = Math.ceil(Math.sqrt(boxes.length)); //ideal square shape
                 var max = Math.floor((winWidth-30)/widest); //but not too wide
@@ -848,7 +852,7 @@ window.FontTester = function(options) {
                 var rows = Math.ceil(boxes.length / columns);
                 var popupWidth = columns * widest;
                 wrapper.style.width = (popupWidth+1) + 'px';
-    
+
                 //remove unsightly edge borders
                 boxes.forEach(function(box, i) {
                     if (i%columns === columns-1) {
@@ -858,27 +862,27 @@ window.FontTester = function(options) {
                         box.style.borderBottom = 'none';
                     }
                 });
-                           
+
                 //center popup around selection, but don't overflow screen edges
                 var centeredLeft = document.documentElement.scrollLeft + selection.rectangle.left + selection.rectangle.width/2 - popupWidth/2;
                 var adjustedLeft = Math.max(12, Math.min(winWidth - popupWidth - 12, centeredLeft));
-    
+
                 wrapper.style.top = (document.documentElement.scrollTop + selection.rectangle.top + selection.rectangle.height) + 'px';
                 wrapper.style.left = (adjustedLeft - (sampWidth - bodyWidth) / 2) + 'px';
-                
+
                 if (centeredLeft !== adjustedLeft) {
                     pointer.style.left = (popupWidth/2 - (adjustedLeft-centeredLeft)) + 'px';
                 }
-    
+
                 function selectGlyph(evt) {
                     var li = evt.target.closest('li');
-                    
+
                     (alternates.querySelectorAll('li.selected') || []).forEach(function(other) {
                         other.removeClass('selected');
                     });
-    
+
                     li.addClass('selected');
-        
+
                     if (!selectedSpan) {
                         //okay this is fun. need to replace parent element's entire contents with a new before-string, span, after-string
                         var parent = selection.anchorNode.parentNode;
@@ -896,43 +900,43 @@ window.FontTester = function(options) {
                             parent.insertBefore(beforeText, selectedSpan);
                         }
                     }
-                    
+
                     var theLetter = pua2letter[li.textContent] || li.textContent;
                     var theIndex = li.getAttribute("data-index");
-                    
+
                     selectedSpan.setAttribute('data-index', theIndex);
                     selectedSpan.setAttribute('data-letter', theLetter);
                     selectedSpan.style.fontFeatureSettings = li.style.fontFeatureSettings;
-                    
+
                     var newText = document.createTextNode(li.textContent);
-                    
+
                     selectedSpan.textContent = "";
                     selectedSpan.appendChild(newText);
-                    
+
                     //and select the new character
                     var newRange = document.createRange();
                     newRange.setStart(newText, 0);
                     newRange.setEnd(newText, newText.length);
-                                    
+
                     //don't let the selection change close the popup
                     ignoreSelectionChange = true;
                     window.getSelection().removeAllRanges();
                     window.getSelection().addRange(newRange);
-    
+
                     setTimeout(function() {
                         ignoreSelectionChange = false;
                     }, 0);
-                    
+
                     evt.cancelBubble = true;
                     evt.stopPropagation();
                 }
-    
+
                 alternates.addEventListener('mousedown', selectGlyph);
                 alternates.addEventListener('touchstart', selectGlyph);
             }
-            
+
         }
-        
+
         document.addEventListener('selectionchange', onSelectionChange);
         document.addEventListener('mouseup', onSelectionChange);
         document.addEventListener('touchend', onSelectionChange);
@@ -954,7 +958,7 @@ window.FontTester = function(options) {
                 }
             };
         }
-        
+
         // do NOT use Object.prototype here as it does not play nice with jQuery http://erik.eae.net/archives/2005/06/06/22.13.54/
         if (!Object.forEach) {
             Object.forEach = function(o, callback) {
@@ -963,7 +967,7 @@ window.FontTester = function(options) {
                 });
             };
         }
-        
+
         // jQuery-style addClass/removeClass are not canon, but more flexible than ClassList
         if (!HTMLElement.prototype.hasClass) {
             HTMLElement.prototype.hasClass = function(str) {
@@ -976,7 +980,7 @@ window.FontTester = function(options) {
                 return !!found;
             };
         }
-        
+
         var spacere = /\s{2,}/g;
         if (!HTMLElement.prototype.addClass) {
             HTMLElement.prototype.addClass = function(cls) {
@@ -985,7 +989,7 @@ window.FontTester = function(options) {
                 return this;
             };
         }
-        
+
         if (!HTMLElement.prototype.removeClass) {
             HTMLElement.prototype.removeClass = function(cls) {
                 var i, words = cls.split(/\s+/);
@@ -1002,7 +1006,7 @@ window.FontTester = function(options) {
                 return this;
             };
         }
-        
+
         //synthetic events
         if (!HTMLElement.prototype.trigger) {
             HTMLElement.prototype.trigger = function(type) {
@@ -1016,12 +1020,12 @@ window.FontTester = function(options) {
                 return this.dispatchEvent(evt);
             };
         }
-        
+
         // closest, from MDN
         if (!Element.prototype.matches) {
             Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
         }
-        
+
         if (!Element.prototype.closest) {
             Element.prototype.closest = function(s) {
                 var el = this;
@@ -1033,22 +1037,22 @@ window.FontTester = function(options) {
                 return null;
             };  
         }
-        
+
         // not in the spec, but seems weird to be able to do it on elements but not text nodes
         if (!Node.prototype.closest) {
             Node.prototype.closest = function(s) {
                 return this.parentNode && this.parentNode.closest(s);
             };
         }
-        
+
         // escape regex special chars
         if (!RegExp.escape) {
             RegExp.escape= function(s) {
                 return s.replace(/[\-\/\\\^\$\*\+\?\.\(\)\|\[\]\{\}]/g, '\\$&');
             };
         }
-        
-        
+
+
         // shortcuts to get dimensions of element minus padding, equivalent to jQuery width() and height()
         if (!Element.prototype.contentWidth) {
             Element.prototype.contentWidth = function() {
@@ -1057,7 +1061,7 @@ window.FontTester = function(options) {
                 return fullwidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
             };
         }
-        
+
         if (!Element.prototype.contentHeight) {
             Element.prototype.contentHeight = function() {
                 var fullheight = this.getBoundingClientRect().height;
@@ -1065,7 +1069,7 @@ window.FontTester = function(options) {
                 return fullheight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom);
             };
         }
-        
+
         //how is this not a thing 
         if (!HTMLFormElement.prototype.serialize) {
             HTMLFormElement.prototype.serialize = function() {
@@ -1077,7 +1081,7 @@ window.FontTester = function(options) {
                     }
                     req.push(encodeURIComponent(input.name) + '=' + encodeURIComponent(input.value));
                 });
-        
+
                 form.querySelectorAll('select:enabled').forEach(function(select) {
                     var options = select.querySelectorAll('option:checked');
                     if (options) {
@@ -1090,7 +1094,7 @@ window.FontTester = function(options) {
             };
         }
     }
-    
+
     function doOnReady(func, thisArg) {
         if (thisArg) {
             func = func.bind(thisArg);
@@ -1101,21 +1105,21 @@ window.FontTester = function(options) {
             func();
         }
     }
-    
+
     function doAjax(url, options) {
         var xhr = new XMLHttpRequest();
         if (options.complete) {
             xhr.addEventListener("load", function() { options.complete(xhr); });
         }
         xhr.open(options.method || 'GET', url);
-        
+
         if (options.data) {
             if (!options.headers) {
                 options.headers = {};
             }
             options.headers['Content-type'] = 'application/x-www-form-urlencoded';
         }
-        
+
         if (options.headers) {
             console.log(options);
             Object.forEach(options.headers, function (v, k) {
@@ -1124,7 +1128,7 @@ window.FontTester = function(options) {
         }
         xhr.send(options.data);
     }
-    
+
 // end of line
 
 };
