@@ -714,6 +714,12 @@ window.Flont = function(options) {
                 return;
             }
 
+            //see if we're still part of the document
+            if (!document.body.contains(options.sample)) {
+                ignoreSelectionChange = true;
+                return;
+            }
+
             //ignore mouse events with secondary buttons
             if ('button' in evt && evt.button > 0) {
                 return;
@@ -882,7 +888,7 @@ window.Flont = function(options) {
                 var adjustedLeft = Math.max(12, Math.min(winWidth - popupWidth - 12, centeredLeft));
 
                 wrapper.style.top = (document.documentElement.scrollTop + selection.rectangle.top + selection.rectangle.height) + 'px';
-                wrapper.style.left = (adjustedLeft - (sampWidth - bodyWidth) / 2) + 'px';
+                wrapper.style.left = adjustedLeft + 'px';
 
                 if (centeredLeft !== adjustedLeft) {
                     pointer.style.left = (popupWidth/2 - (adjustedLeft-centeredLeft)) + 'px';
