@@ -113,7 +113,7 @@ window.FontTester = function(options) {
     //everything after this is just function definitions
     function verifyDependencies(callback) {
         var toLoad = Object.keys(dependencies).length;
-        dependencies.forEach(function(url, name) {
+        Object.forEach(dependencies, function(url, name) {
             var script;
             if (name in window) {
                 --toLoad;
@@ -176,7 +176,7 @@ window.FontTester = function(options) {
             options.controls = {};
         }
 
-        options.controls.forEach(function(v, k) {
+        Object.forEach(options.controls, function(v, k) {
             options.controls[k] = getElement(v);
         });
         
@@ -341,7 +341,7 @@ window.FontTester = function(options) {
             }
             
             var reversecmap = {};
-            font.tables.cmap.glyphIndexMap.forEach(function(g, u) {
+            Object.forEach(font.tables.cmap.glyphIndexMap, function(g, u) {
                 reversecmap[g] = String.fromCharCode(u);
             });
             function addAlt(fromText, toGlyphID, feature) {
@@ -548,7 +548,7 @@ window.FontTester = function(options) {
         }
         
         //convert input value ranges to standard units, and hook up change events
-        input2css.forEach(function(cssrule, name) {
+        Object.forEach(input2css, function(cssrule, name) {
             var input = options.controls[name];
             
             if (!input) {
@@ -797,7 +797,7 @@ window.FontTester = function(options) {
                     nothingSpecial.className += ' selected';
                 } 
                 alternates.appendChild(nothingSpecial);
-                allAlts.forEach(function(info, toglyph) {
+                Object.forEach(allAlts, function(info, toglyph) {
                     var li = document.createElement('li');
                     li.title = info.feature;
                     if (alreadySelected === i) {
@@ -955,12 +955,11 @@ window.FontTester = function(options) {
             };
         }
         
-        // and why not forEach on objects
-        if (!Object.prototype.forEach) {
-            Object.prototype.forEach = function(callback) {
-                var thiss = this;
-                Object.keys(thiss).forEach(function(k) {
-                    callback(thiss[k], k);
+        // do NOT use Object.prototype here as it does not play nice with jQuery http://erik.eae.net/archives/2005/06/06/22.13.54/
+        if (!Object.forEach) {
+            Object.forEach = function(o, callback) {
+                Object.keys(o).forEach(function(k) {
+                    callback(o[k], k);
                 });
             };
         }
@@ -1119,7 +1118,7 @@ window.FontTester = function(options) {
         
         if (options.headers) {
             console.log(options);
-            options.headers.forEach(function (v, k) {
+            Object.forEach(options.headers, function (v, k) {
                 xhr.setRequestHeader(k, v);
             });
         }
