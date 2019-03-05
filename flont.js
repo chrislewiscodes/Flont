@@ -140,17 +140,19 @@ window.Flont = function(options) {
             throw "Flont: Invalid options" + (opt ? ': ' + opt : '') + (msg ? ' ' + msg : '');
         }
 
-        function getElement(el, multiple) {
-            var qs = multiple ? document.querySelectorAll.bind(document) : document.querySelector.bind(document);
+        function getElement(el) {
+            function isMultiple(first) {
+                return first && first.tagName === 'INPUT' && (first.type === 'radio' || first.type === 'checkbox');
+            }
             if (typeof el === 'string') {
-                return qs(el);
+                return isMultiple(document.querySelector(el)) ? document.querySelectorAll(el) : document.querySelector(el);
             } else if (el instanceof HTMLElement) {
-                return multiple ? [el] : el;
+                return isMultiple(el) ? [el] : el;
             } else if (el instanceof HTMLCollection) {
                 if (el.length == 0) {
                     return null;
                 }
-                return multiple ? el : el[0];
+                return isMultiple(el[0]) ? el : el[0];
             }
             return null;
         }
@@ -551,9 +553,9 @@ window.Flont = function(options) {
 
         //convert input value ranges to standard units, and hook up change events
         Object.forEach(input2css, function(cssrule, name) {
-            var input = options.controls[name];
+            var inputs = options.controls[name];
 
-            if (!input) {
+            if (!inputs) {
                 return;
             }
 
@@ -561,78 +563,88 @@ window.Flont = function(options) {
             var em = parseFloat(actualValues.fontSize);
             var actualValue = parseFloat(actualValues[cssrule]);
 
-            switch (cssrule) {
-            case 'fontFamily':
-                actualValue = getPrimaryFontFamily(actualValues[cssrule]);
-                break;
-            case 'lineHeight':
-                if (input.max > 3) {
-                    //make sure inputs are in em multiples
-                    input.min /= em;
-                    input.max /= em;
-                }
-                //convert pixels to em multiple
-                actualValue /= em;
-                break;
-            case 'letterSpacing':
-                if (Math.abs(input.min) <= 1 && Math.abs(input.max <= 1)) {
-                    //assume em, convert to per mille
-                    input.min *= 1000;
-                    input.max *= 1000;
-                }
-                if (isNaN(actualValue)) {
-                    actualValue = 0;
-                }
+            if (inputs instanceof HTMLElement) {
+                inputs = [inputs];
+            }
 
-                //actualValue will be in px, convert to per mille em
-                actualValue = 1000 * actualValue / em;
-                break;
-            case 'color': case 'background':
-                if (input.type === 'color') {
-                    //color inputs *only* accept #RRGGBB values,
-                    //while computed value is rgba(r, g, b, a), so we need to convert!
-                    try {
-                        var rgba = actualValues[cssrule].match(/rgba?\((.+?)\)/)[1].split(/,\s*/);
-                        if (rgba) {
-                            if (rgba.length >= 4 && rgba[3] == 0) {
-                                actualValue = '#ffffff';
-                            } else {
-                                var r = parseInt(rgba[0]).toString(16);
-                                var g = parseInt(rgba[1]).toString(16);
-                                var b = parseInt(rgba[2]).toString(16);
-                                if (r.length === 1) {
-                                    r = '0' + r;
-                                }
-                                if (g.length === 1) {
-                                    g = '0' + g;
-                                }
-                                if (b.length === 1) {
-                                    b = '0' + b;
-                                }
-                                actualValue = '#' + r + g + b;
-                            }
-                        }
-                    } catch (e) {
-                        console.log("Error handling " + cssrule + ": " + e.toString());
-                        actualValue = cssrule === 'background' ? '#ffffff' : '#000000';
+            inputs.forEach(function(input) {
+                switch (cssrule) {
+                case 'fontFamily':
+                    actualValue = getPrimaryFontFamily(actualValues[cssrule]);
+                    break;
+                case 'lineHeight':
+                    if (input.max > 3) {
+                        //make sure inputs are in em multiples
+                        input.min /= em;
+                        input.max /= em;
                     }
+                    //convert pixels to em multiple
+                    actualValue /= em;
+                    break;
+                case 'letterSpacing':
+                    if (Math.abs(input.min) <= 1 && Math.abs(input.max <= 1)) {
+                        //assume em, convert to per mille
+                        input.min *= 1000;
+                        input.max *= 1000;
+                    }
+                    if (isNaN(actualValue)) {
+                        actualValue = 0;
+                    }
+    
+                    //actualValue will be in px, convert to per mille em
+                    actualValue = 1000 * actualValue / em;
+                    break;
+                case 'color': case 'background':
+                    if (input.type === 'color') {
+                        //color inputs *only* accept #RRGGBB values,
+                        //while computed value is rgba(r, g, b, a), so we need to convert!
+                        try {
+                            var rgba = actualValues[cssrule].match(/rgba?\((.+?)\)/)[1].split(/,\s*/);
+                            if (rgba) {
+                                if (rgba.length >= 4 && rgba[3] == 0) {
+                                    actualValue = '#ffffff';
+                                } else {
+                                    var r = parseInt(rgba[0]).toString(16);
+                                    var g = parseInt(rgba[1]).toString(16);
+                                    var b = parseInt(rgba[2]).toString(16);
+                                    if (r.length === 1) {
+                                        r = '0' + r;
+                                    }
+                                    if (g.length === 1) {
+                                        g = '0' + g;
+                                    }
+                                    if (b.length === 1) {
+                                        b = '0' + b;
+                                    }
+                                    actualValue = '#' + r + g + b;
+                                }
+                            }
+                        } catch (e) {
+                            console.log("Error handling " + cssrule + ": " + e.toString());
+                            actualValue = cssrule === 'background' ? '#ffffff' : '#000000';
+                        }
+                    }
+                    break;
                 }
-                break;
-            }
-            //update input to match specimen
-            input.setAttribute('data-css-rule', cssrule);
-            input.addEventListener('change', onControlChange);
-            input.addEventListener('input', onControlChange);
-
-            if (input.tagName === 'SELECT') {
-                var opt = input.querySelector('option[value="' + actualValue + '"]');
-                if (opt) {
-                    opt.selected = true;
+                //update input to match specimen
+                input.setAttribute('data-css-rule', cssrule);
+                input.addEventListener('change', onControlChange);
+                input.addEventListener('input', onControlChange);
+    
+                if (input.tagName === 'SELECT') {
+                    var opt = input.querySelector('option[value="' + actualValue + '"]');
+                    if (opt) {
+                        opt.selected = true;
+                    }
+                } else if ('checked' in input) {
+                    if (input.value == actualValue) {
+                        input.checked = true;
+                    }
+                } else {
+                    input.value = actualValue;
                 }
-            } else {
-                input.value = actualValue;
-            }
-            //input.trigger('change');
+                //input.trigger('change');
+            });
         });
     }
 
