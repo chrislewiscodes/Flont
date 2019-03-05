@@ -205,11 +205,12 @@ window.Flont = function(options) {
     }
 
 
-    function closeGAP() {
+    function closeGAP(result) {
         var gap = document.getElementById('flont-popup');
         if (gap) {
             gap.parentNode.removeChild(gap);
         }
+        return result;
     }
 
     //figure out the webfont URL for the sample font
@@ -708,15 +709,15 @@ window.Flont = function(options) {
             );
         }
 
-        var ignoreSelectionChange = false;
+        window.Flont.ignoreSelectionChange = false;
         function onSelectionChange(evt) {
-            if (ignoreSelectionChange) {
-                return;
+            if (window.Flont.ignoreSelectionChange) {
+                return true;
             }
 
             //see if we're still part of the document
             if (!document.body.contains(options.sample)) {
-                ignoreSelectionChange = true;
+                window.Flont.ignoreSelectionChange = true;
                 return;
             }
 
@@ -743,7 +744,7 @@ window.Flont = function(options) {
 
             //clicking inside the popup shouldn't close the popup
             if (inPopup) {
-                return;
+                return true;
             }
 
             //don't open the popup for random selections!
@@ -754,7 +755,7 @@ window.Flont = function(options) {
             //no selection, no popup
             if (selection.isCollapsed || !selectedText.length) {
                 previousSelection = selection;
-                return closeGAP();
+                return closeGAP(true);
             }
 
             //not even going to deal with crossing elements yet
@@ -939,28 +940,27 @@ window.Flont = function(options) {
                     newRange.setEnd(newText, newText.length);
 
                     //don't let the selection change close the popup
-                    ignoreSelectionChange = true;
+                    window.Flont.ignoreSelectionChange = true;
                     window.getSelection().removeAllRanges();
                     window.getSelection().addRange(newRange);
 
                     setTimeout(function() {
-                        ignoreSelectionChange = false;
-                    }, 0);
+                        window.Flont.ignoreSelectionChange = false;
+                    }, 100);
 
                     evt.cancelBubble = true;
                     evt.stopPropagation();
+                    evt.preventDefault();
                 }
 
                 alternates.addEventListener('mousedown', selectGlyph);
                 alternates.addEventListener('touchstart', selectGlyph);
+                
+                return true;
             }
-
         }
 
-        document.addEventListener('selectionchange', onSelectionChange);
-        document.addEventListener('mouseup', onSelectionChange);
-        document.addEventListener('touchend', onSelectionChange);
-        document.addEventListener('keyup', onSelectionChange);
+        window.Flont.documentFlonts.push(onSelectionChange);
     }
 
     //close popup on resize
@@ -1152,5 +1152,33 @@ window.Flont = function(options) {
 // end of line
 
 };
+
+//allow a little cross-Flont communication to avoid interference between testers
+window.Flont.documentFlonts = [];
+
+var previousEvent;
+function processEvents(evt) {
+    if (window.Flont.ignoreSelectionChange && evt.type === 'selectionchange') {
+        return;
+    }
+
+    //ignore mouse/touch/keyboard events after a selection change
+    var handled = (previousEvent && previousEvent.type === 'selectionchange') && evt.type !== 'selectionchange';
+
+    if (!handled) {
+        window.Flont.documentFlonts.forEach(function(onSelectionChange) {
+            if (!handled) {
+                handled = onSelectionChange(evt);
+            }
+        });
+    }
+
+    previousEvent = evt;
+}
+
+document.addEventListener('selectionchange', processEvents);
+document.addEventListener('mouseup', processEvents);
+document.addEventListener('touchend', processEvents);
+document.addEventListener('keyup', processEvents);
 
 })();
