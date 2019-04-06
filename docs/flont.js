@@ -233,7 +233,7 @@ window.Flont = function(options) {
                             if (chosen) {
                                 return;
                             }
-                            var m = url.match(/url\(\s*['"]?([^'"\)]+)['"]?\s*\)(?:\s+format\(['"]?([^\s'"]+))?/);
+                            var m = url.match(/url\(\s*['"]?([^'"\)]+)['"]?\s*\)(?:\s+format\(['"]?([^\s'"\)]+))?/);
                             if (m[2]) {
                                 if (m[2] === 'woff' || m[2] === 'truetype' || m[2] === 'opentype') {
                                     chosen = m[1];
