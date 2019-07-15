@@ -1,5 +1,5 @@
 # Flont
-A Javascript library for creating interactive web font specimens.
+A Javascript library for creating interactive web font specimens. Demo: https://flont.chrislewis.codes/
 
 Web designers can style up their own specimen layout, then plug in Flont to hook up 
 form controls to modify various aspects of the specimen's typography. Flont's showcase
