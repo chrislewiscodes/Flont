@@ -353,7 +353,7 @@ window.Flont = function(options) {
             Object.forEach(font.tables.cmap.glyphIndexMap, function(g, u) {
                 reversecmap[g] = String.fromCharCode(u);
             });
-            function addAlt(fromText, toGlyphID, feature) {
+            function addAlt(fromText, toGlyphID, feature, featIndex) {
                 var toGlyph = font.glyphs.glyphs[toGlyphID];
                 if (!toGlyph) {
                     console.log('ERROR: "' + fromText + '" + ' + feature + ' results in nonexistent glyph ' + toGlyphID + '.');
@@ -364,12 +364,15 @@ window.Flont = function(options) {
                     if (!(fromText in allAlternates[options.fontURL])) {
                         allAlternates[options.fontURL][fromText] = {};
                     }
-                    if (!(toGlyph.index in allAlternates[options.fontURL][fromText])) {
+                    var existingSub = allAlternates[options.fontURL][fromText][toGlyph.index];
+                    //generally first found substitution wins, but prefer specific alt features to aalt
+                    if (!existingSub || existingSub.feature === 'aalt' || existingSub.featureIndex > 0) {
                         allAlternates[options.fontURL][fromText][toGlyph.index] = {
                             'feature': feature,
-                                'unicode': reversecmap[toGlyph.index],
+                            'unicode': reversecmap[toGlyph.index],
                             'left': metrics.leftSideBearing / font.unitsPerEm,
-                            'right': metrics.rightSideBearing / font.unitsPerEm
+                            'right': metrics.rightSideBearing / font.unitsPerEm,
+                            'featureIndex': featIndex
                         };
                     }
                 } catch (e) {
@@ -377,56 +380,29 @@ window.Flont = function(options) {
                 }
             }
 
-            var unhandled = {};
+            var unhandledFeatures = {};
             gsub.features.forEach(function(f) {
                 var tag = f.tag;
                 var feature = f.feature;
+
                 feature.lookupListIndexes.forEach(function(lli) {
                     var lookup = gsub.lookups[lli];
                     lookup.subtables.forEach(function(subtable) {
-                        //console.log(tag, lli, subtable);
-                        if ('coverage' in subtable && 'substitute' in subtable) {
-                            if ('glyphs' in subtable.coverage) {
-                                subtable.coverage.glyphs.forEach(function(fromglyph, i) {
-                                    addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
-                                });
-                            } else if ('ranges' in subtable.coverage) {
-                                var i = 0;
-                                subtable.coverage.ranges.forEach(function(range) {
-                                    for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
-                                        addAlt(reversecmap[fromglyph], subtable.substitute[i++], tag);
-                                    }
-                                });
+                        function unhandled() {
+                            if (!(tag in unhandledFeatures)) {
+                                unhandledFeatures[tag] = 0;
                             }
-                        } else if ('coverage' in subtable && 'deltaGlyphId' in subtable) {
-                            if ('glyphs' in subtable.coverage) {
-                                subtable.coverage.glyphs.forEach(function(fromglyph) {
-                                    addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
-                                });
-                            } else if ('ranges' in subtable.coverage) {
-                                var i = 0;
-                                subtable.coverage.ranges.forEach(function(range) {
-                                    for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
-                                        addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
-                                    }
-                                });
-                            }
-                        } /* else if ('backtrackCoverage' in subtable) {
-                            //as far as I can tell, these are all covered in regular alternates above
-                            function asdf(arr) {
-                                var r = [];
-                                for (var i in arr) {
-                                    if (!arr[i].glyphs) continue;
-                                    for (var j in arr[i].glyphs) {
-                                        r.push(reversecmap[arr[i].glyphs[j]]);
-                                    }
-                                }
-                                return r;
-                            }
-                            console.log(tag, subtable);
-                            console.log(asdf(subtable.backtrackCoverage), asdf(subtable.inputCoverage), asdf(subtable.lookaheadCoverage));
+                            unhandledFeatures[tag] += 1;
+                            //console.log('Unhandled OT feature:', tag, subtable);
                         }
-                        */ else if ('coverage' in subtable && 'ligatureSets' in subtable) {
+
+                        //console.log(tag, lli, subtable);
+                        if ('mapping' in subtable) {
+                            Object.forEach(mapping, function(toglyph, fromglyph) {
+                                addAlt(reversecmap[fromglyph], toglyph, tag);
+                            });
+                        } else if ('coverage' in subtable && 'ligatureSets' in subtable) {
+                            // ligatures: many to one substitution
                             var firsts = [];
                             if ('glyphs' in subtable.coverage) {
                                 subtable.coverage.glyphs.forEach(function(glyph) {
@@ -450,19 +426,66 @@ window.Flont = function(options) {
                                     ligs.push(lig);
                                 });
                             });
-                        } else {
-                            if (!(tag in unhandled)) {
-                                unhandled[tag] = 0;
+                        } else if ('coverage' in subtable) {
+                            // common one-to-one substitutions.
+                            // there are a million ways to represent these in GSUB
+                            var hasSubstitute = 'substitute' in subtable;
+                            var hasDelta = 'deltaGlyphId' in subtable;
+                            var hasAlternates = 'alternateSets' in subtable;
+                            if (!hasSubstitute && !hasDelta && !hasAlternates) {
+                                unhandled();
+                            } else if ('glyphs' in subtable.coverage) {
+                                subtable.coverage.glyphs.forEach(function(fromglyph, i) {
+                                    if (hasSubstitute) {
+                                        addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
+                                    } else if (hasDelta) {
+                                        addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
+                                    } else if (hasAlternates) {
+                                        subtable.alternateSets[i].forEach(function(altID, altIndex) {
+                                            addAlt(reversecmap[fromglyph], altID, tag, altIndex + 1);
+                                        });
+                                    }
+                                });
+                            } else if ('ranges' in subtable.coverage) {
+                                var i = 0;
+                                subtable.coverage.ranges.forEach(function(range) {
+                                    for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
+                                        if (hasSubstitute) {
+                                            addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
+                                        } else if (hasDelta) {
+                                            addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
+                                        } else if (hasAlternates) {
+                                            subtable.alternateSets[i].forEach(function(altID, altIndex) {
+                                                addAlt(reversecmap[fromglyph], altID, tag, altIndex + 1);
+                                            });
+                                        }
+                                        ++i;
+                                    }
+                                });
                             }
-                            unhandled[tag] += 1;
-    //                         console.log('Unhandled OT feature:', tag, subtable);
+                        } /* else if ('backtrackCoverage' in subtable) {
+                            //as far as I can tell, these are all covered in regular alternates above
+                            function asdf(arr) {
+                                var r = [];
+                                for (var i in arr) {
+                                    if (!arr[i].glyphs) continue;
+                                    for (var j in arr[i].glyphs) {
+                                        r.push(reversecmap[arr[i].glyphs[j]]);
+                                    }
+                                }
+                                return r;
+                            }
+                            console.log(tag, subtable);
+                            console.log(asdf(subtable.backtrackCoverage), asdf(subtable.inputCoverage), asdf(subtable.lookaheadCoverage));
+                        } */ else {
+                            unhandled();
                         }
                     });
                 });
             });
 
-            if (Object.keys(unhandled).length) {
-                console.log("Unhandled features: ", unhandled);
+            if (Object.keys(unhandledFeatures).length) {
+                console.log("Unhandled features: ", unhandledFeatures);
             }
 
             if (callback) {
@@ -596,7 +619,7 @@ window.Flont = function(options) {
                     if (isNaN(actualValue)) {
                         actualValue = 0;
                     }
-    
+
                     //actualValue will be in px, convert to per mille em
                     actualValue = 1000 * actualValue / em;
                     break;
@@ -636,7 +659,7 @@ window.Flont = function(options) {
                 input.setAttribute('data-css-rule', cssrule);
                 input.addEventListener('change', onControlChange);
                 input.addEventListener('input', onControlChange);
-    
+
                 if (input.tagName === 'SELECT') {
                     var opt = input.querySelector('option[value="' + actualValue + '"]');
                     if (opt) {
@@ -960,7 +983,7 @@ window.Flont = function(options) {
 
                 alternates.addEventListener('mousedown', selectGlyph);
                 alternates.addEventListener('touchstart', selectGlyph);
-                
+
                 return true;
             }
         }
