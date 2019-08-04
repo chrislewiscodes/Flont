@@ -865,7 +865,7 @@ window.Flont = function(options) {
                     } else {
                         li.addClass('ffs');
                         li.textContent = selectedText;
-                        li.style.fontFeatureSettings = '"' + info.feature + '" 1';
+                        li.style.fontFeatureSettings = '"' + info.feature + '" ' + (info.featureIndex || 1);
                     }
 
                     li.style.paddingLeft = (0.25-info.left) + 'em';
