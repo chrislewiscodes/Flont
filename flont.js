@@ -330,7 +330,7 @@ window.Flont = function(options) {
             return;
         }
 
-        window.alts = allAlternates[options.fontURL] = {};
+        allAlternates[options.fontURL] = {};
 
         window.opentype.load(options.fontURL, function(err, font) {
             if (err) {
@@ -487,8 +487,6 @@ window.Flont = function(options) {
             if (Object.keys(unhandledFeatures).length) {
                 console.log("Unhandled features: ", unhandledFeatures);
             }
-
-            options.sample.textContent = Object.keys(allAlternates[options.fontURL]).join(" ");
 
             if (callback) {
                 callback(font);
