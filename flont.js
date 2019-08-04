@@ -112,6 +112,11 @@ window.Flont = function(options) {
     //and that's it! 
 
     //everything after this is just function definitions
+
+    function windowScrollTop() {
+        return Math.max(document.documentElement.scrollTop, document.body.scrollTop);
+    }
+
     function verifyDependencies(callback) {
         var toLoad = Object.keys(dependencies).length;
         Object.forEach(dependencies, function(url, name) {
@@ -855,9 +860,9 @@ window.Flont = function(options) {
 
                 //make all boxes the same size for a nice grid
                 var boxes = alternates.childNodes;
-                var winWidth = document.documentElement.clientWidth;
-                var bodyWidth = document.body.getBoundingClientRect().width;
-                var sampWidth = options.sample.getBoundingClientRect().width;
+                var winWidth = window.innerWidth;
+                var bodyRect = document.body.getBoundingClientRect();
+                var sampRect = options.sample.getBoundingClientRect();
 
                 var widest = 0;
                 boxes.forEach(function(box) {
@@ -885,10 +890,10 @@ window.Flont = function(options) {
                 });
 
                 //center popup around selection, but don't overflow screen edges
-                var centeredLeft = document.documentElement.scrollLeft + selection.rectangle.left + selection.rectangle.width/2 - popupWidth/2;
-                var adjustedLeft = Math.max(12, Math.min(winWidth - popupWidth - 12, centeredLeft));
+                var centeredLeft = document.documentElement.scrollLeft + selection.rectangle.left + selection.rectangle.width/2 - popupWidth/2 - bodyRect.left;
+                var adjustedLeft = Math.max(document.documentElement.scrollLeft + 12, Math.min(winWidth - popupWidth - 12, centeredLeft));
 
-                wrapper.style.top = (document.documentElement.scrollTop + selection.rectangle.top + selection.rectangle.height) + 'px';
+                wrapper.style.top = (windowScrollTop() + selection.rectangle.top + selection.rectangle.height) + 'px';
                 wrapper.style.left = adjustedLeft + 'px';
 
                 if (centeredLeft !== adjustedLeft) {
