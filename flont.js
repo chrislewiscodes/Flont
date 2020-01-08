@@ -294,12 +294,12 @@ window.Flont = function(options) {
 
         font.tables.gsub.features.forEach(function(table) {
             if (table.tag in seen) return; //sometimes see weird duplicates
-            if (!(table.tag in otFeatures)) return;
+            if (!(table.tag in otFeatures) && !ssre.test(table.tag)) return;
             //if (ssre.test(table.tag)) return;
             if (select.tagName === 'SELECT') {
                 var option = document.createElement('option');
                 option.value = table.tag;
-                option.textContent = otFeatures[table.tag];
+                option.textContent = otFeatures[table.tag] || table.tag.replace("ss", "Stylistic Set ");
                 option.selected = defaults.test(table.tag);
                 select.appendChild(option);
             } else {
@@ -311,7 +311,7 @@ window.Flont = function(options) {
                 input.checked = defaults.test(table.tag);
                 input.value = table.tag;
                 input.id = rando;
-                label.textContent = otFeatures[table.tag];
+                label.textContent = otFeatures[table.tag] || table.tag.replace("ss", "Stylistic Set ");
                 label.setAttribute('for', rando);
                 item.appendChild(input);
                 item.appendChild(label);
