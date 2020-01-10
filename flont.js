@@ -227,31 +227,36 @@ window.Flont = function(options) {
         var chosen;
         for (s=0, sl=document.styleSheets.length; s < sl; s++) {
             sheet = document.styleSheets[s];
-            for (r=0, rl=sheet.cssRules.length; r < rl; r++) {
-                if (sheet.cssRules[r] instanceof CSSFontFaceRule) {
-                    css = sheet.cssRules[r].cssText;
-                    fam = css.match(/font-family\s*:\s*['"]?([^'",;]+)/);
-                    urls = css.match(/url\([^\)]+\)(?:\s+format\([^\)]+\))?/g);
-                    if (fam && urls) {
-                        chosen = null;
-                        urls.forEach(function(url) {
-                            if (chosen) {
-                                return;
-                            }
-                            var m = url.match(/url\(\s*['"]?([^'"\)]+)['"]?\s*\)(?:\s+format\(['"]?([^\s'"\)]+))?/);
-                            if (m[2]) {
-                                if (m[2] === 'woff' || m[2] === 'truetype' || m[2] === 'opentype') {
+            try {
+                //cssRules are inaccessible for off-site stylesheets
+                for (r=0, rl=sheet.cssRules.length; r < rl; r++) {
+                    if (sheet.cssRules[r] instanceof CSSFontFaceRule) {
+                        css = sheet.cssRules[r].cssText;
+                        fam = css.match(/font-family\s*:\s*['"]?([^'",;]+)/);
+                        urls = css.match(/url\([^\)]+\)(?:\s+format\([^\)]+\))?/g);
+                        if (fam && urls) {
+                            chosen = null;
+                            urls.forEach(function(url) {
+                                if (chosen) {
+                                    return;
+                                }
+                                var m = url.match(/url\(\s*['"]?([^'"\)]+)['"]?\s*\)(?:\s+format\(['"]?([^\s'"\)]+))?/);
+                                if (m[2]) {
+                                    if (m[2] === 'woff' || m[2] === 'truetype' || m[2] === 'opentype') {
+                                        chosen = m[1];
+                                    }
+                                } else if (m[1].match(/(woff|ttf|otf)$/)) {
                                     chosen = m[1];
                                 }
-                            } else if (m[1].match(/(woff|ttf|otf)$/)) {
-                                chosen = m[1];
+                            });
+                            if (chosen) {
+                                name2url[fam[1].trim()] = chosen;
                             }
-                        });
-                        if (chosen) {
-                            name2url[fam[1].trim()] = chosen;
                         }
                     }
                 }
+            } catch (e) {
+                console.log("Ignoring off-site stylesheet: " + sheet.href);
             }
         }
 
