@@ -28,75 +28,514 @@
  */
 
 
+var dependencies = {
+    'opentype': 'https://cdn.jsdelivr.net/npm/opentype.js@latest/dist/opentype.min.js'
+};
+
+function verifyDependencies(callback) {
+    var toLoad = Object.keys(dependencies).length;
+    Object.forEach(dependencies, function(url, name) {
+        var script;
+        if (name in window) {
+            --toLoad;
+        } else {
+            script = document.createElement('script');
+            script.src = url;
+            script.addEventListener('load', function() {
+                --toLoad;
+                if (toLoad <= 0 && callback) {
+                    callback();
+                }
+            });
+            document.head.appendChild(script);
+        }
+        if (toLoad <= 0 && callback) {
+            callback();
+        }
+    });
+}
+
+
+var otFeatures = {
+    'abvf': "Above-base Forms",
+    'abvm': "Above-base Mark Positioning",
+    'abvs': "Above-base Substitutions",
+    'afrc': "Alternative Fractions",
+    'blwf': "Below-base Forms",
+    'blwm': "Below-base Mark Positioning",
+    'blws': "Below-base Substitutions",
+    'calt': "Contextual Alternates",
+    'case': "Case-Sensitive Forms",
+    'clig': "Contextual Ligatures",
+    'cpsp': "Capital Spacing",
+    'cswh': "Contextual Swash",
+    'curs': "Cursive Positioning",
+    'c2pc': "Petite Capitals From Capitals",
+    'c2sc': "Small Capitals From Capitals",
+    'dlig': "Discretionary Ligatures",
+    'expt': "Expert Forms",
+    'falt': "Final Glyph on Line Alternates",
+    'fin2': "Terminal Forms #2",
+    'fin3': "Terminal Forms #3",
+    'fina': "Terminal Forms",
+    'frac': "Fractions",
+    'hist': "Historical Forms",
+    'hlig': "Historical Ligatures",
+    'init': "Initial Forms",
+    'isol': "Isolated Forms",
+    'ital': "Italics",
+    'jalt': "Justification Alternates",
+    'kern': "Kerning",
+    'liga': "Standard Ligatures",
+    'lnum': "Lining Figures",
+    'mark': "Mark Positioning",
+    'med2': "Medial Forms #2",
+    'medi': "Medial Forms",
+    'mgrk': "Mathematical Greek",
+    'mkmk': "Mark to Mark Positioning",
+    'mset': "Mark Positioning via Substitution",
+    'nalt': "Alternate Annotation Forms",
+    'onum': "Oldstyle Figures",
+    'ordn': "Ordinals",
+    'ornm': "Ornaments",
+    'pcap': "Petite Capitals",
+    'pnum': "Proportional Figures",
+    'rclt': "Required Contextual Alternates",
+    'rlig': "Required Ligatures",
+    'rvrn': "Required Variation Alternates",
+    'salt': "Stylistic Alternates",
+    'sinf': "Scientific Inferiors",
+    'size': "Optical size",
+    'smcp': "Small Caps",
+    'subs': "Subscript",
+    'sups': "Superscript",
+    'swsh': "Swash",
+    'titl': "Titling",
+    'tnum': "Tabular Figures",
+    'unic': "Unicase",
+    'zero': "Slashed Zero"
+};
+
+
+//polyfills
+// forEach on nodes, from MDN
+if (window.NodeList && !NodeList.prototype.forEach) {
+    NodeList.prototype.forEach = function (callback, thisArg) {
+        thisArg = thisArg || window;
+        for (var i = 0; i < this.length; i++) {
+            callback.call(thisArg, this[i], i, this);
+        }
+    };
+}
+
+// do NOT use Object.prototype here as it does not play nice with jQuery http://erik.eae.net/archives/2005/06/06/22.13.54/
+if (!Object.forEach) {
+    Object.forEach = function(o, callback) {
+        Object.keys(o).forEach(function(k) {
+            callback(o[k], k);
+        });
+    };
+}
+
+// jQuery-style addClass/removeClass are not canon, but more flexible than ClassList
+if (!HTMLElement.prototype.hasClass) {
+    HTMLElement.prototype.hasClass = function(str) {
+        var el = this;
+        var words = str.split(/\s+/);
+        var found = true;
+        words.forEach(function(word) {
+            found = found && el.className.match(new RegExp("(^|\\s)" + word + "($|\\s)"));
+        });
+        return !!found;
+    };
+}
+
+var spacere = /\s{2,}/g;
+if (!HTMLElement.prototype.addClass) {
+    HTMLElement.prototype.addClass = function(cls) {
+        this.className += ' ' + cls;
+        this.className = this.className.trim().replace(spacere, ' ');
+        return this;
+    };
+}
+
+if (!HTMLElement.prototype.removeClass) {
+    HTMLElement.prototype.removeClass = function(cls) {
+        var i, words = cls.split(/\s+/);
+        if (words.length > 1) {
+            for (var i=0; i < words.length; i++) {
+                this.removeClass(words[i]);
+            }
+        } else {
+            var classre = new RegExp('(^|\\s)' + cls + '($|\\s)', 'g');
+            while (classre.test(this.className)) {
+                this.className = this.className.replace(classre, ' ').trim().replace(spacere, '');
+            }
+        }
+        return this;
+    };
+}
+
+//synthetic events
+if (!HTMLElement.prototype.trigger) {
+    HTMLElement.prototype.trigger = function(type) {
+        var evt;
+        if (typeof window.Event === "function"){ 
+            evt = new Event(type);
+        } else { 
+            evt = document.createEvent('Event');
+            evt.initEvent(type, true, true);
+        }
+        return this.dispatchEvent(evt);
+    };
+}
+
+// closest, from MDN
+if (!Element.prototype.matches) {
+    Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
+}
+
+if (!Element.prototype.closest) {
+    Element.prototype.closest = function(s) {
+        var el = this;
+        if (!document.documentElement.contains(el)) return null;
+        do {
+            if (el.matches(s)) return el;
+            el = el.parentElement || el.parentNode;
+        } while (el !== null && el.nodeType === 1); 
+        return null;
+    };  
+}
+
+// not in the spec, but seems weird to be able to do it on elements but not text nodes
+if (!Node.prototype.closest) {
+    Node.prototype.closest = function(s) {
+        return this.parentNode && this.parentNode.closest(s);
+    };
+}
+
+// escape regex special chars
+if (!RegExp.escape) {
+    RegExp.escape= function(s) {
+        return s.replace(/[\-\/\\\^\$\*\+\?\.\(\)\|\[\]\{\}]/g, '\\$&');
+    };
+}
+
+
+// shortcuts to get dimensions of element minus padding, equivalent to jQuery width() and height()
+if (!Element.prototype.contentWidth) {
+    Element.prototype.contentWidth = function() {
+        var fullwidth = this.getBoundingClientRect().width;
+        var css = getComputedStyle(this);
+        return fullwidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
+    };
+}
+
+if (!Element.prototype.contentHeight) {
+    Element.prototype.contentHeight = function() {
+        var fullheight = this.getBoundingClientRect().height;
+        var css = getComputedStyle(this);
+        return fullheight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom);
+    };
+}
+
+//how is this not a thing 
+if (!HTMLFormElement.prototype.serialize) {
+    HTMLFormElement.prototype.serialize = function() {
+        var form = this;
+        var req = [];
+        form.querySelectorAll('input:enabled').forEach(function(input) {
+            if ((input.type === 'checkbox' || input.type === 'radio') && !input.checked) {
+                return;
+            }
+            req.push(encodeURIComponent(input.name) + '=' + encodeURIComponent(input.value));
+        });
+
+        form.querySelectorAll('select:enabled').forEach(function(select) {
+            var options = select.querySelectorAll('option:checked');
+            if (options) {
+                options.forEach(function(opt) {
+                    req.push(encodeURIComponent(select.name) + '=' + encodeURIComponent(opt.value));
+                });
+            }
+        });
+        return req.join("&");
+    };
+}
+
+// end polyfills
+
+
+// basically like jQuery()
+function doOnReady(func, thisArg) {
+    if (thisArg) {
+        func = func.bind(thisArg);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', func);
+    } else {
+        func();
+    }
+}
+
+
+// cut-down version of jQuery.ajax
+function doAjax(url, options) {
+    var xhr = new XMLHttpRequest();
+    if (options.complete) {
+        xhr.addEventListener("load", function() { options.complete(xhr); });
+    }
+    xhr.open(options.method || 'GET', url);
+
+    if (options.data) {
+        if (!options.headers) {
+            options.headers = {};
+        }
+        options.headers['Content-type'] = 'application/x-www-form-urlencoded';
+    }
+
+    if (options.headers) {
+        console.log(options);
+        Object.forEach(options.headers, function (v, k) {
+            xhr.setRequestHeader(k, v);
+        });
+    }
+    xhr.send(options.data);
+}
+
+function windowScrollTop() {
+    return Math.max(document.documentElement.scrollTop, document.body.scrollTop);
+}
+
+function smoothScroll(y, el) {
+    (el || window).scrollTo({'left': 0, 'top': y, 'behavior': 'smooth'});
+}
+
+
+// return the first value from a CSS font-family list
+function getPrimaryFontFamily(families) {
+    if (families instanceof HTMLElement) {
+        families = getComputedStyle(families).fontFamily;
+    }
+    return families.split(",")[0].trim().replace(/["']/g, '');
+}
+
+
+//figure out the webfont URL for the sample font
+function getWebfontUrl(searchFamily) {
+    //go through CSS stylesheets and pull out all the font-family to url mappings
+    var name2url = {};
+    var s, sl, sheet;
+    var r, rl, css, fam, urls;
+    var chosen;
+    for (s=0, sl=document.styleSheets.length; s < sl; s++) {
+        sheet = document.styleSheets[s];
+        try {
+            //cssRules are inaccessible for off-site stylesheets
+            for (r=0, rl=sheet.cssRules.length; r < rl; r++) {
+                if (sheet.cssRules[r] instanceof CSSFontFaceRule) {
+                    css = sheet.cssRules[r].cssText;
+                    fam = css.match(/font-family\s*:\s*['"]?([^'",;]+)/);
+                    urls = css.match(/url\([^\)]+\)(?:\s+format\([^\)]+\))?/g);
+                    if (fam && urls) {
+                        chosen = null;
+                        urls.forEach(function(url) {
+                            if (chosen) {
+                                return;
+                            }
+                            var m = url.match(/url\(\s*['"]?([^'"\)]+)['"]?\s*\)(?:\s+format\(['"]?([^\s'"\)]+))?/);
+                            if (m[2]) {
+                                if (m[2] === 'woff' || m[2] === 'truetype' || m[2] === 'opentype') {
+                                    chosen = m[1];
+                                }
+                            } else if (m[1].match(/(woff|ttf|otf)$/)) {
+                                chosen = m[1];
+                            }
+                        });
+                        if (chosen) {
+                            name2url[fam[1].trim()] = chosen;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.log("Ignoring off-site stylesheet: " + sheet.href);
+        }
+    }
+    
+    return name2url[searchFamily];
+}
+
+
+function getAlternatesForUrl(fontUrl, callback) {
+    var alternates = {}
+    
+    window.opentype.load(fontUrl, function(err, font) {
+        if (err) {
+            console.log("ERROR LOADING " + fontUrl + ': ' + err);
+            callback(alternates, null);
+            return;
+        }
+
+        window.font = font;
+
+        //populate glyph alternates
+        var gsub = font.tables.gsub;
+
+        if (!gsub) {
+            callback(alternates, font);
+            return;
+        }
+
+        var reversecmap = {};
+        Object.forEach(font.tables.cmap.glyphIndexMap, function(g, u) {
+            reversecmap[g] = String.fromCharCode(u);
+        });
+        function addAlt(fromText, toGlyphID, feature, featIndex) {
+            var toGlyph = font.glyphs.glyphs[toGlyphID];
+            if (!toGlyph) {
+                console.log('ERROR: "' + fromText + '" + ' + feature + ' results in nonexistent glyph ' + toGlyphID + '.');
+                return;
+            }
+            try {
+                var metrics = toGlyph.getMetrics();
+                if (!(fromText in alternates)) {
+                    alternates[fromText] = {};
+                }
+                var existingSub = alternates[fromText][toGlyph.index];
+                //generally first found substitution wins, but prefer specific alt features to aalt
+                if (!existingSub || existingSub.feature === 'aalt' || existingSub.featureIndex > 0) {
+                    alternates[fromText][toGlyph.index] = {
+                        'feature': feature,
+                        'unicode': reversecmap[toGlyph.index],
+                        'left': metrics.leftSideBearing / font.unitsPerEm,
+                        'right': metrics.rightSideBearing / font.unitsPerEm,
+                        'featureIndex': featIndex
+                    };
+                }
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+        var unhandledFeatures = {};
+        gsub.features.forEach(function(f) {
+            var tag = f.tag;
+            var feature = f.feature;
+
+            feature.lookupListIndexes.forEach(function(lli) {
+                var lookup = gsub.lookups[lli];
+                lookup.subtables.forEach(function(subtable) {
+                    function unhandled() {
+                        if (!(tag in unhandledFeatures)) {
+                            unhandledFeatures[tag] = 0;
+                        }
+                        unhandledFeatures[tag] += 1;
+                        //console.log('Unhandled OT feature:', tag, subtable);
+                    }
+
+                    //console.log(tag, lli, subtable);
+                    if ('mapping' in subtable) {
+                        Object.forEach(mapping, function(toglyph, fromglyph) {
+                            addAlt(reversecmap[fromglyph], toglyph, tag);
+                        });
+                    } else if ('coverage' in subtable && 'ligatureSets' in subtable) {
+                        // ligatures: many to one substitution
+                        var firsts = [];
+                        if ('glyphs' in subtable.coverage) {
+                            subtable.coverage.glyphs.forEach(function(glyph) {
+                                firsts.push(reversecmap[glyph]);
+                            });
+                        } else if ('ranges' in subtable.coverage) {
+                            subtable.coverage.ranges.forEach(function(range) {
+                                for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
+                                    firsts.push(reversecmap[fromglyph]);
+                                }
+                            });
+                        }
+                        var ligs = [];
+                        subtable.ligatureSets.forEach(function(ligsetset, i) {
+                            ligsetset.forEach(function(ligset, j) {
+                                var lig = firsts[i];
+                                ligset.components.forEach(function(component) {
+                                    lig += reversecmap[component];
+                                });
+                                addAlt(lig, ligset.ligGlyph, tag);
+                                ligs.push(lig);
+                            });
+                        });
+                    } else if ('coverage' in subtable) {
+                        // common one-to-one substitutions.
+                        // there are a million ways to represent these in GSUB
+                        var hasSubstitute = 'substitute' in subtable;
+                        var hasDelta = 'deltaGlyphId' in subtable;
+                        var hasAlternates = 'alternateSets' in subtable;
+                        if (!hasSubstitute && !hasDelta && !hasAlternates) {
+                            unhandled();
+                        } else if ('glyphs' in subtable.coverage) {
+                            subtable.coverage.glyphs.forEach(function(fromglyph, i) {
+                                if (hasSubstitute) {
+                                    addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
+                                } else if (hasDelta) {
+                                    addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
+                                } else if (hasAlternates) {
+                                    subtable.alternateSets[i].forEach(function(altID, altIndex) {
+                                        addAlt(reversecmap[fromglyph], altID, tag, altIndex + 1);
+                                    });
+                                }
+                            });
+                        } else if ('ranges' in subtable.coverage) {
+                            var i = 0;
+                            subtable.coverage.ranges.forEach(function(range) {
+                                for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
+                                    if (hasSubstitute) {
+                                        addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
+                                    } else if (hasDelta) {
+                                        addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
+                                    } else if (hasAlternates) {
+                                        subtable.alternateSets[i].forEach(function(altID, altIndex) {
+                                            addAlt(reversecmap[fromglyph], altID, tag, altIndex + 1);
+                                        });
+                                    }
+                                    ++i;
+                                }
+                            });
+                        }
+                    } /* else if ('backtrackCoverage' in subtable) {
+                        //as far as I can tell, these are all covered in regular alternates above
+                        function asdf(arr) {
+                            var r = [];
+                            for (var i in arr) {
+                                if (!arr[i].glyphs) continue;
+                                for (var j in arr[i].glyphs) {
+                                    r.push(reversecmap[arr[i].glyphs[j]]);
+                                }
+                            }
+                            return r;
+                        }
+                        console.log(tag, subtable);
+                        console.log(asdf(subtable.backtrackCoverage), asdf(subtable.inputCoverage), asdf(subtable.lookaheadCoverage));
+                    } */ else {
+                        unhandled();
+                    }
+                });
+            });
+        });
+
+        if (Object.keys(unhandledFeatures).length) {
+            console.log("Unhandled features: ", unhandledFeatures);
+        }
+
+        if (callback) {
+            callback(alternates, font);
+        }
+    });
+}
+
+
 window.Flont = function(options) {
 
-    var dependencies = {
-        'opentype': 'https://cdn.jsdelivr.net/npm/opentype.js@latest/dist/opentype.min.js'
-    };
-
-    var allAlternates = {};
-    var otFeatures = {
-        'abvf': "Above-base Forms",
-        'abvm': "Above-base Mark Positioning",
-        'abvs': "Above-base Substitutions",
-        'afrc': "Alternative Fractions",
-        'blwf': "Below-base Forms",
-        'blwm': "Below-base Mark Positioning",
-        'blws': "Below-base Substitutions",
-        'calt': "Contextual Alternates",
-        'case': "Case-Sensitive Forms",
-        'clig': "Contextual Ligatures",
-        'cpsp': "Capital Spacing",
-        'cswh': "Contextual Swash",
-        'curs': "Cursive Positioning",
-        'c2pc': "Petite Capitals From Capitals",
-        'c2sc': "Small Capitals From Capitals",
-        'dlig': "Discretionary Ligatures",
-        'expt': "Expert Forms",
-        'falt': "Final Glyph on Line Alternates",
-        'fin2': "Terminal Forms #2",
-        'fin3': "Terminal Forms #3",
-        'fina': "Terminal Forms",
-        'frac': "Fractions",
-        'hist': "Historical Forms",
-        'hlig': "Historical Ligatures",
-        'init': "Initial Forms",
-        'isol': "Isolated Forms",
-        'ital': "Italics",
-        'jalt': "Justification Alternates",
-        'kern': "Kerning",
-        'liga': "Standard Ligatures",
-        'lnum': "Lining Figures",
-        'mark': "Mark Positioning",
-        'med2': "Medial Forms #2",
-        'medi': "Medial Forms",
-        'mgrk': "Mathematical Greek",
-        'mkmk': "Mark to Mark Positioning",
-        'mset': "Mark Positioning via Substitution",
-        'nalt': "Alternate Annotation Forms",
-        'onum': "Oldstyle Figures",
-        'ordn': "Ordinals",
-        'ornm': "Ornaments",
-        'pcap': "Petite Capitals",
-        'pnum': "Proportional Figures",
-        'rclt': "Required Contextual Alternates",
-        'rlig': "Required Ligatures",
-        'rvrn': "Required Variation Alternates",
-        'salt': "Stylistic Alternates",
-        'sinf': "Scientific Inferiors",
-        'size': "Optical size",
-        'smcp': "Small Caps",
-        'subs': "Subscript",
-        'sups': "Superscript",
-        'swsh': "Swash",
-        'titl': "Titling",
-        'tnum': "Tabular Figures",
-        'unic': "Unicase",
-        'zero': "Slashed Zero"
-    };
-
-    //initialize!
-    setupPolyfills();
+    var currentAlternates = {};
 
     //make sure we have everything we need
     sanitizeOptions();
@@ -114,31 +553,19 @@ window.Flont = function(options) {
 
     //everything after this is just function definitions
 
-    function windowScrollTop() {
-        return Math.max(document.documentElement.scrollTop, document.body.scrollTop);
-    }
-
-    function verifyDependencies(callback) {
-        var toLoad = Object.keys(dependencies).length;
-        Object.forEach(dependencies, function(url, name) {
-            var script;
-            if (name in window) {
-                --toLoad;
-            } else {
-                script = document.createElement('script');
-                script.src = url;
-                script.addEventListener('load', function() {
-                    --toLoad;
-                    if (toLoad <= 0 && callback) {
-                        callback();
-                    }
-                });
-                document.head.appendChild(script);
+    function getSampleWebfontUrl() {
+        var found = false;
+        getComputedStyle(options.sample).fontFamily.split(',').forEach(function(fontname) {
+            if (found) {
+                return;
             }
-            if (toLoad <= 0 && callback) {
-                callback();
+            fontname = fontname.trim().replace(/^['"]/, '').replace(/['"]$/, '').trim();
+            var url = getWebfontUrl(fontname);
+            if (url) {
+                found = options.fontUrl = url;
             }
         });
+        return found;
     }
 
     function sanitizeOptions() {
@@ -197,19 +624,6 @@ window.Flont = function(options) {
         }
     }
 
-    function smoothScroll(y, el) {
-        (el || window).scrollTo({'left': 0, 'top': y, 'behavior': 'smooth'});
-    }
-
-
-    // return the first value from a CSS font-family list
-    function getPrimaryFontFamily(families) {
-        if (families instanceof HTMLElement) {
-            families = getComputedStyle(families).fontFamily;
-        }
-        return families.split(",")[0].trim().replace(/["']/g, '');
-    }
-
 
     function closeGAP(result) {
         var gap = document.getElementById('flont-popup');
@@ -219,60 +633,6 @@ window.Flont = function(options) {
         return result;
     }
 
-    //figure out the webfont URL for the sample font
-    function getWebfontURL() {
-        //go through CSS stylesheets and pull out all the font-family to url mappings
-        var name2url = {};
-        var s, sl, sheet;
-        var r, rl, css, fam, urls;
-        var chosen;
-        for (s=0, sl=document.styleSheets.length; s < sl; s++) {
-            sheet = document.styleSheets[s];
-            try {
-                //cssRules are inaccessible for off-site stylesheets
-                for (r=0, rl=sheet.cssRules.length; r < rl; r++) {
-                    if (sheet.cssRules[r] instanceof CSSFontFaceRule) {
-                        css = sheet.cssRules[r].cssText;
-                        fam = css.match(/font-family\s*:\s*['"]?([^'",;]+)/);
-                        urls = css.match(/url\([^\)]+\)(?:\s+format\([^\)]+\))?/g);
-                        if (fam && urls) {
-                            chosen = null;
-                            urls.forEach(function(url) {
-                                if (chosen) {
-                                    return;
-                                }
-                                var m = url.match(/url\(\s*['"]?([^'"\)]+)['"]?\s*\)(?:\s+format\(['"]?([^\s'"\)]+))?/);
-                                if (m[2]) {
-                                    if (m[2] === 'woff' || m[2] === 'truetype' || m[2] === 'opentype') {
-                                        chosen = m[1];
-                                    }
-                                } else if (m[1].match(/(woff|ttf|otf)$/)) {
-                                    chosen = m[1];
-                                }
-                            });
-                            if (chosen) {
-                                name2url[fam[1].trim()] = chosen;
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                console.log("Ignoring off-site stylesheet: " + sheet.href);
-            }
-        }
-
-        var found = false;
-        getComputedStyle(options.sample).fontFamily.split(',').forEach(function(fontname) {
-            if (found) {
-                return;
-            }
-            fontname = fontname.trim().replace(/^['"]/, '').replace(/['"]$/, '').trim();
-            if (fontname in name2url) {
-                found = options.fontURL = name2url[fontname];
-            }
-        });
-        return found;
-    }
 
     //populate features dropdown
     function populateFeatures(font) {
@@ -329,174 +689,16 @@ window.Flont = function(options) {
         select.trigger('change');
     }
 
-    function populateAlternates(callback) {
-        var fontURL = getWebfontURL();
-        if (!fontURL) {
+    function populateAlternates() {
+        var fontUrl = getSampleWebfontUrl();
+        if (!fontUrl) {
             console.log("Couldn't find valid webfont URL in CSS @font-face rules.");
             return;
         }
 
-        allAlternates[options.fontURL] = {};
-
-        window.opentype.load(options.fontURL, function(err, font) {
-            if (err) {
-                console.log("ERROR LOADING " + options.fontURL + ': ' + err);
-                return;
-            }
-
-            window.font = font;
-
+        getAlternatesForUrl(fontUrl, function(alternates, font) {
+            currentAlternates = alternates;
             populateFeatures(font);
-
-            //populate glyph alternates
-            var gsub = font.tables.gsub;
-
-            if (!gsub) {
-                return;
-            }
-
-            var reversecmap = {};
-            Object.forEach(font.tables.cmap.glyphIndexMap, function(g, u) {
-                reversecmap[g] = String.fromCharCode(u);
-            });
-            function addAlt(fromText, toGlyphID, feature, featIndex) {
-                var toGlyph = font.glyphs.glyphs[toGlyphID];
-                if (!toGlyph) {
-                    console.log('ERROR: "' + fromText + '" + ' + feature + ' results in nonexistent glyph ' + toGlyphID + '.');
-                    return;
-                }
-                try {
-                    var metrics = toGlyph.getMetrics();
-                    if (!(fromText in allAlternates[options.fontURL])) {
-                        allAlternates[options.fontURL][fromText] = {};
-                    }
-                    var existingSub = allAlternates[options.fontURL][fromText][toGlyph.index];
-                    //generally first found substitution wins, but prefer specific alt features to aalt
-                    if (!existingSub || existingSub.feature === 'aalt' || existingSub.featureIndex > 0) {
-                        allAlternates[options.fontURL][fromText][toGlyph.index] = {
-                            'feature': feature,
-                            'unicode': reversecmap[toGlyph.index],
-                            'left': metrics.leftSideBearing / font.unitsPerEm,
-                            'right': metrics.rightSideBearing / font.unitsPerEm,
-                            'featureIndex': featIndex
-                        };
-                    }
-                } catch (e) {
-                    console.log(e);
-                }
-            }
-
-            var unhandledFeatures = {};
-            gsub.features.forEach(function(f) {
-                var tag = f.tag;
-                var feature = f.feature;
-
-                feature.lookupListIndexes.forEach(function(lli) {
-                    var lookup = gsub.lookups[lli];
-                    lookup.subtables.forEach(function(subtable) {
-                        function unhandled() {
-                            if (!(tag in unhandledFeatures)) {
-                                unhandledFeatures[tag] = 0;
-                            }
-                            unhandledFeatures[tag] += 1;
-                            //console.log('Unhandled OT feature:', tag, subtable);
-                        }
-
-                        //console.log(tag, lli, subtable);
-                        if ('mapping' in subtable) {
-                            Object.forEach(mapping, function(toglyph, fromglyph) {
-                                addAlt(reversecmap[fromglyph], toglyph, tag);
-                            });
-                        } else if ('coverage' in subtable && 'ligatureSets' in subtable) {
-                            // ligatures: many to one substitution
-                            var firsts = [];
-                            if ('glyphs' in subtable.coverage) {
-                                subtable.coverage.glyphs.forEach(function(glyph) {
-                                    firsts.push(reversecmap[glyph]);
-                                });
-                            } else if ('ranges' in subtable.coverage) {
-                                subtable.coverage.ranges.forEach(function(range) {
-                                    for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
-                                        firsts.push(reversecmap[fromglyph]);
-                                    }
-                                });
-                            }
-                            var ligs = [];
-                            subtable.ligatureSets.forEach(function(ligsetset, i) {
-                                ligsetset.forEach(function(ligset, j) {
-                                    var lig = firsts[i];
-                                    ligset.components.forEach(function(component) {
-                                        lig += reversecmap[component];
-                                    });
-                                    addAlt(lig, ligset.ligGlyph, tag);
-                                    ligs.push(lig);
-                                });
-                            });
-                        } else if ('coverage' in subtable) {
-                            // common one-to-one substitutions.
-                            // there are a million ways to represent these in GSUB
-                            var hasSubstitute = 'substitute' in subtable;
-                            var hasDelta = 'deltaGlyphId' in subtable;
-                            var hasAlternates = 'alternateSets' in subtable;
-                            if (!hasSubstitute && !hasDelta && !hasAlternates) {
-                                unhandled();
-                            } else if ('glyphs' in subtable.coverage) {
-                                subtable.coverage.glyphs.forEach(function(fromglyph, i) {
-                                    if (hasSubstitute) {
-                                        addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
-                                    } else if (hasDelta) {
-                                        addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
-                                    } else if (hasAlternates) {
-                                        subtable.alternateSets[i].forEach(function(altID, altIndex) {
-                                            addAlt(reversecmap[fromglyph], altID, tag, altIndex + 1);
-                                        });
-                                    }
-                                });
-                            } else if ('ranges' in subtable.coverage) {
-                                var i = 0;
-                                subtable.coverage.ranges.forEach(function(range) {
-                                    for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
-                                        if (hasSubstitute) {
-                                            addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
-                                        } else if (hasDelta) {
-                                            addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
-                                        } else if (hasAlternates) {
-                                            subtable.alternateSets[i].forEach(function(altID, altIndex) {
-                                                addAlt(reversecmap[fromglyph], altID, tag, altIndex + 1);
-                                            });
-                                        }
-                                        ++i;
-                                    }
-                                });
-                            }
-                        } /* else if ('backtrackCoverage' in subtable) {
-                            //as far as I can tell, these are all covered in regular alternates above
-                            function asdf(arr) {
-                                var r = [];
-                                for (var i in arr) {
-                                    if (!arr[i].glyphs) continue;
-                                    for (var j in arr[i].glyphs) {
-                                        r.push(reversecmap[arr[i].glyphs[j]]);
-                                    }
-                                }
-                                return r;
-                            }
-                            console.log(tag, subtable);
-                            console.log(asdf(subtable.backtrackCoverage), asdf(subtable.inputCoverage), asdf(subtable.lookaheadCoverage));
-                        } */ else {
-                            unhandled();
-                        }
-                    });
-                });
-            });
-
-            if (Object.keys(unhandledFeatures).length) {
-                console.log("Unhandled features: ", unhandledFeatures);
-            }
-
-            if (callback) {
-                callback(font);
-            }
         });
     }
 
@@ -828,8 +1030,8 @@ window.Flont = function(options) {
             var hasAlts = false, allAlts = {};
 
             //if you only want to match exact string...
-            if (options.fontURL in allAlternates && selectedText in allAlternates[options.fontURL]) {
-                allAlts = allAlternates[options.fontURL][selectedText];
+            if (selectedText in currentAlternates) {
+                allAlts = currentAlternates[selectedText];
                 hasAlts = true;
             }
 
@@ -1001,191 +1203,7 @@ window.Flont = function(options) {
     window.removeEventListener('resize', closeGAP);
     window.addEventListener('resize', closeGAP);
 
-
-    function setupPolyfills() {
-        // forEach on nodes, from MDN
-        if (window.NodeList && !NodeList.prototype.forEach) {
-            NodeList.prototype.forEach = function (callback, thisArg) {
-                thisArg = thisArg || window;
-                for (var i = 0; i < this.length; i++) {
-                    callback.call(thisArg, this[i], i, this);
-                }
-            };
-        }
-
-        // do NOT use Object.prototype here as it does not play nice with jQuery http://erik.eae.net/archives/2005/06/06/22.13.54/
-        if (!Object.forEach) {
-            Object.forEach = function(o, callback) {
-                Object.keys(o).forEach(function(k) {
-                    callback(o[k], k);
-                });
-            };
-        }
-
-        // jQuery-style addClass/removeClass are not canon, but more flexible than ClassList
-        if (!HTMLElement.prototype.hasClass) {
-            HTMLElement.prototype.hasClass = function(str) {
-                var el = this;
-                var words = str.split(/\s+/);
-                var found = true;
-                words.forEach(function(word) {
-                    found = found && el.className.match(new RegExp("(^|\\s)" + word + "($|\\s)"));
-                });
-                return !!found;
-            };
-        }
-
-        var spacere = /\s{2,}/g;
-        if (!HTMLElement.prototype.addClass) {
-            HTMLElement.prototype.addClass = function(cls) {
-                this.className += ' ' + cls;
-                this.className = this.className.trim().replace(spacere, ' ');
-                return this;
-            };
-        }
-
-        if (!HTMLElement.prototype.removeClass) {
-            HTMLElement.prototype.removeClass = function(cls) {
-                var i, words = cls.split(/\s+/);
-                if (words.length > 1) {
-                    for (var i=0; i < words.length; i++) {
-                        this.removeClass(words[i]);
-                    }
-                } else {
-                    var classre = new RegExp('(^|\\s)' + cls + '($|\\s)', 'g');
-                    while (classre.test(this.className)) {
-                        this.className = this.className.replace(classre, ' ').trim().replace(spacere, '');
-                    }
-                }
-                return this;
-            };
-        }
-
-        //synthetic events
-        if (!HTMLElement.prototype.trigger) {
-            HTMLElement.prototype.trigger = function(type) {
-                var evt;
-                if (typeof window.Event === "function"){ 
-                    evt = new Event(type);
-                } else { 
-                    evt = document.createEvent('Event');
-                    evt.initEvent(type, true, true);
-                }
-                return this.dispatchEvent(evt);
-            };
-        }
-
-        // closest, from MDN
-        if (!Element.prototype.matches) {
-            Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
-        }
-
-        if (!Element.prototype.closest) {
-            Element.prototype.closest = function(s) {
-                var el = this;
-                if (!document.documentElement.contains(el)) return null;
-                do {
-                    if (el.matches(s)) return el;
-                    el = el.parentElement || el.parentNode;
-                } while (el !== null && el.nodeType === 1); 
-                return null;
-            };  
-        }
-
-        // not in the spec, but seems weird to be able to do it on elements but not text nodes
-        if (!Node.prototype.closest) {
-            Node.prototype.closest = function(s) {
-                return this.parentNode && this.parentNode.closest(s);
-            };
-        }
-
-        // escape regex special chars
-        if (!RegExp.escape) {
-            RegExp.escape= function(s) {
-                return s.replace(/[\-\/\\\^\$\*\+\?\.\(\)\|\[\]\{\}]/g, '\\$&');
-            };
-        }
-
-
-        // shortcuts to get dimensions of element minus padding, equivalent to jQuery width() and height()
-        if (!Element.prototype.contentWidth) {
-            Element.prototype.contentWidth = function() {
-                var fullwidth = this.getBoundingClientRect().width;
-                var css = getComputedStyle(this);
-                return fullwidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
-            };
-        }
-
-        if (!Element.prototype.contentHeight) {
-            Element.prototype.contentHeight = function() {
-                var fullheight = this.getBoundingClientRect().height;
-                var css = getComputedStyle(this);
-                return fullheight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom);
-            };
-        }
-
-        //how is this not a thing 
-        if (!HTMLFormElement.prototype.serialize) {
-            HTMLFormElement.prototype.serialize = function() {
-                var form = this;
-                var req = [];
-                form.querySelectorAll('input:enabled').forEach(function(input) {
-                    if ((input.type === 'checkbox' || input.type === 'radio') && !input.checked) {
-                        return;
-                    }
-                    req.push(encodeURIComponent(input.name) + '=' + encodeURIComponent(input.value));
-                });
-
-                form.querySelectorAll('select:enabled').forEach(function(select) {
-                    var options = select.querySelectorAll('option:checked');
-                    if (options) {
-                        options.forEach(function(opt) {
-                            req.push(encodeURIComponent(select.name) + '=' + encodeURIComponent(opt.value));
-                        });
-                    }
-                });
-                return req.join("&");
-            };
-        }
-    }
-
-    function doOnReady(func, thisArg) {
-        if (thisArg) {
-            func = func.bind(thisArg);
-        }
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', func);
-        } else {
-            func();
-        }
-    }
-
-    function doAjax(url, options) {
-        var xhr = new XMLHttpRequest();
-        if (options.complete) {
-            xhr.addEventListener("load", function() { options.complete(xhr); });
-        }
-        xhr.open(options.method || 'GET', url);
-
-        if (options.data) {
-            if (!options.headers) {
-                options.headers = {};
-            }
-            options.headers['Content-type'] = 'application/x-www-form-urlencoded';
-        }
-
-        if (options.headers) {
-            console.log(options);
-            Object.forEach(options.headers, function (v, k) {
-                xhr.setRequestHeader(k, v);
-            });
-        }
-        xhr.send(options.data);
-    }
-
-// end of line
-
-};
+}; //window.Flont
 
 //allow a little cross-Flont communication to avoid interference between testers
 window.Flont.documentFlonts = [];
