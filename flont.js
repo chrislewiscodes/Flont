@@ -7,7 +7,7 @@
  * Flont('#specimen-element') 
  * 
  * Call with a single HTMLElement object or CSS selector string, representing the font-specimen display element.
- * That element needs to have a `data-webfont-url` attribute on it containing the URL to a TTF, OTF, or WOFF font.
+ * Webfont URL will be determined from stylesheets and the CSS font-family name on the specimen.
  * This will set that element up with popup glyph-alternates selectors when the user selects text.
  *
  * Flexible usage:
@@ -15,6 +15,7 @@
  * Flont({
      sample: '#specimen-element', //required
      controls: {
+         'font': '[name="font-family"]', // select element, or a set of radio buttons, 
          'size': '#font-size-input', //input that controls font size
          'leading': '#line-height-input', //input that controls line height. Value: multiple of size. Typical range: 0.8 to 2.0
          'tracking': '#letter-spacing-input', //input that controls letter spacing. Value: ‰ of size. Typical range: -100 to 100
