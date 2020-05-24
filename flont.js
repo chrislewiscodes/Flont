@@ -207,6 +207,98 @@ if (!Element.prototype.closest) {
     };  
 }
 
+// String.fromCodePoint, from MDN
+if (!String.fromCodePoint) (function(stringFromCharCode) {
+    var fromCodePoint = function(_) {
+      var codeUnits = [], codeLen = 0, result = "";
+      for (var index=0, len = arguments.length; index !== len; ++index) {
+        var codePoint = +arguments[index];
+        // correctly handles all cases including `NaN`, `-Infinity`, `+Infinity`
+        // The surrounding `!(...)` is required to correctly handle `NaN` cases
+        // The (codePoint>>>0) === codePoint clause handles decimals and negatives
+        if (!(codePoint < 0x10FFFF && (codePoint>>>0) === codePoint))
+          throw RangeError("Invalid code point: " + codePoint);
+        if (codePoint <= 0xFFFF) { // BMP code point
+          codeLen = codeUnits.push(codePoint);
+        } else { // Astral code point; split in surrogate halves
+          // https://mathiasbynens.be/notes/javascript-encoding#surrogate-formulae
+          codePoint -= 0x10000;
+          codeLen = codeUnits.push(
+            (codePoint >> 10) + 0xD800,  // highSurrogate
+            (codePoint % 0x400) + 0xDC00 // lowSurrogate
+          );
+        }
+        if (codeLen >= 0x3fff) {
+          result += stringFromCharCode.apply(null, codeUnits);
+          codeUnits.length = 0;
+        }
+      }
+      return result + stringFromCharCode.apply(null, codeUnits);
+    };
+    try { // IE 8 only supports `Object.defineProperty` on DOM elements
+      Object.defineProperty(String, "fromCodePoint", {
+        "value": fromCodePoint, "configurable": true, "writable": true
+      });
+    } catch(e) {
+      String.fromCodePoint = fromCodePoint;
+    }
+}(String.fromCharCode));
+
+/*! https://mths.be/codepointat v0.2.0 by @mathias */
+if (!String.prototype.codePointAt) {
+  (function() {
+    'use strict'; // needed to support `apply`/`call` with `undefined`/`null`
+    var defineProperty = (function() {
+      // IE 8 only supports `Object.defineProperty` on DOM elements
+      try {
+        var object = {};
+        var $defineProperty = Object.defineProperty;
+        var result = $defineProperty(object, object, object) && $defineProperty;
+      } catch(error) {}
+      return result;
+    }());
+    var codePointAt = function(position) {
+      if (this == null) {
+        throw TypeError();
+      }
+      var string = String(this);
+      var size = string.length;
+      // `ToInteger`
+      var index = position ? Number(position) : 0;
+      if (index != index) { // better `isNaN`
+        index = 0;
+      }
+      // Account for out-of-bounds indices:
+      if (index < 0 || index >= size) {
+        return undefined;
+      }
+      // Get the first code unit
+      var first = string.charCodeAt(index);
+      var second;
+      if ( // check if it’s the start of a surrogate pair
+        first >= 0xD800 && first <= 0xDBFF && // high surrogate
+        size > index + 1 // there is a next code unit
+      ) {
+        second = string.charCodeAt(index + 1);
+        if (second >= 0xDC00 && second <= 0xDFFF) { // low surrogate
+          // https://mathiasbynens.be/notes/javascript-encoding#surrogate-formulae
+          return (first - 0xD800) * 0x400 + second - 0xDC00 + 0x10000;
+        }
+      }
+      return first;
+    };
+    if (defineProperty) {
+      defineProperty(String.prototype, 'codePointAt', {
+        'value': codePointAt,
+        'configurable': true,
+        'writable': true
+      });
+    } else {
+      String.prototype.codePointAt = codePointAt;
+    }
+  }());
+}
+
 // not in the spec, but seems weird to be able to do it on elements but not text nodes
 if (!Node.prototype.closest) {
     Node.prototype.closest = function(s) {
@@ -366,9 +458,225 @@ function getWebfontUrl(searchFamily) {
     return name2url[searchFamily];
 }
 
+function getReverseCmap(font) {
+    //glyph to unicode mapping
+    var reversecmap = {};
+    Object.forEach(font.tables.cmap.glyphIndexMap, function(g, u) {
+        reversecmap[g] = String.fromCodePoint(u);
+    });
+    return reversecmap;
+}
+
+function getGlyphSingleSubstitutions(font) {
+    var g2g = {};
+    function glyph2glyph(fromGlyphID, toGlyphID, feature, featIndex) {
+        if (!(fromGlyphID in g2g)) {
+            g2g[fromGlyphID] = {};
+        }
+        if (!(feature in g2g[fromGlyphID])) {
+            g2g[fromGlyphID][feature] = {};
+        }
+        g2g[fromGlyphID][feature][featIndex || '0'] = toGlyphID;
+    }
+
+    var unhandledFeatures = {};
+    font.tables.gsub.features.forEach(function(f) {
+        var tag = f.tag;
+        var feature = f.feature;
+
+        feature.lookupListIndexes.forEach(function(lli) {
+            var lookup = font.tables.gsub.lookups[lli];
+            lookup.subtables.forEach(function(subtable) {
+                function unhandled() {
+                    if (!(tag in unhandledFeatures)) {
+                        unhandledFeatures[tag] = 0;
+                    }
+                    unhandledFeatures[tag] += 1;
+                    //console.log('Unhandled OT feature:', tag, subtable);
+                }
+
+                //console.log(tag, lli, subtable);
+                if ('mapping' in subtable) {
+                    Object.forEach(mapping, function(toglyph, fromglyph) {
+                        glyph2glyph(fromglyph, toglyph, tag);
+                    });
+                } else if ('coverage' in subtable) {
+                    //ignore multiple-character substitutions
+                    if ('ligatureSets' in subtable || 'backtrackCoverage' in subtable) {
+                        return;
+                    }
+                    
+                    // common one-to-one substitutions
+                    // there are a million ways to represent these in GSUB
+                    var hasSubstitute = 'substitute' in subtable;
+                    var hasDelta = 'deltaGlyphId' in subtable;
+                    var hasAlternates = 'alternateSets' in subtable;
+                    if (!hasSubstitute && !hasDelta && !hasAlternates) {
+                        unhandled();
+                    } else if ('glyphs' in subtable.coverage) {
+                        subtable.coverage.glyphs.forEach(function(fromglyph, i) {
+                            if (hasSubstitute) {
+                                glyph2glyph(fromglyph, subtable.substitute[i], tag);
+                            } else if (hasDelta) {
+                                glyph2glyph(fromglyph, fromglyph + subtable.deltaGlyphId, tag);
+                            } else if (hasAlternates) {
+                                subtable.alternateSets[i].forEach(function(altID, altIndex) {
+                                    glyph2glyph(fromglyph, altID, tag, altIndex + 1);
+                                });
+                            }
+                        });
+                    } else if ('ranges' in subtable.coverage) {
+                        var i = 0;
+                        subtable.coverage.ranges.forEach(function(range) {
+                            for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
+                                if (hasSubstitute) {
+                                    glyph2glyph(fromglyph, subtable.substitute[i], tag);
+                                } else if (hasDelta) {
+                                    glyph2glyph(fromglyph, fromglyph + subtable.deltaGlyphId, tag);
+                                } else if (hasAlternates) {
+                                    subtable.alternateSets[i].forEach(function(altID, altIndex) {
+                                        glyph2glyph(fromglyph, altID, tag, altIndex + 1);
+                                    });
+                                }
+                                ++i;
+                            }
+                        });
+                    }
+                } else {
+                    unhandled();
+                }
+            });
+        });
+    });
+    
+    return g2g;
+}
+
+function getLigatures(font) {
+    var ligatures = {};
+    font.tables.gsub.features.forEach(function(f) {
+        var tag = f.tag;
+        var feature = f.feature;
+
+        var reversecmap = getReverseCmap(font);
+
+        feature.lookupListIndexes.forEach(function(lli) {
+            var lookup = font.tables.gsub.lookups[lli];
+            lookup.subtables.forEach(function(subtable) {
+                if ('coverage' in subtable && 'ligatureSets' in subtable) {
+                    // ligatures: many to one substitution
+                    var firsts = [];
+                    if ('glyphs' in subtable.coverage) {
+                        subtable.coverage.glyphs.forEach(function(glyph) {
+                            firsts.push(reversecmap[glyph]);
+                        });
+                    } else if ('ranges' in subtable.coverage) {
+                        subtable.coverage.ranges.forEach(function(range) {
+                            for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
+                                firsts.push(reversecmap[fromglyph]);
+                            }
+                        });
+                    }
+                    var ligs = [];
+                    subtable.ligatureSets.forEach(function(ligsetset, i) {
+                        ligsetset.forEach(function(ligset, j) {
+                            var lig = firsts[i];
+                            ligset.components.forEach(function(component) {
+                                lig += reversecmap[component];
+                            });
+                            if (!(lig in ligatures)) {
+                                ligatures[lig] = {};
+                            }
+                            ligatures[lig][tag] = ligset.ligGlyph;
+                        });
+                    });
+                }
+            });
+        });
+    });
+    
+    return ligatures;
+}
+
+function getGlyphSubstitutionTrails(font) {
+    var g2g = getGlyphSingleSubstitutions(font);
+    var seen = {};
+    var substitutions = [];
+    var addcell = function(fromglyph, featureTrail, indexTrail) {
+        if (!featureTrail || !indexTrail) {
+            featureTrail = [];
+            indexTrail = [];
+        }
+        if (!(fromglyph in g2g)) {
+            return;
+        }
+        Object.forEach(g2g[fromglyph], function(subfeatures, feat) {
+            if (feat === 'aalt') {
+                return;
+            }
+            if (featureTrail.indexOf(feat) >= 0) {
+                return;
+            }
+            Object.forEach(subfeatures, function(toglyph, featureIndex) {
+                if (toglyph in seen) {
+                    return;
+                }
+                featureIndex = parseInt(featureIndex) || 0;
+                featureTrail.push(feat);
+                indexTrail.push(featureIndex);
+
+                seen[toglyph] = true;
+
+                var ffs = [];
+                featureTrail.forEach(function(f, i) {
+                    var clause = '"' + f + '"';
+                    if (indexTrail[i] > 0) {
+                        clause += ' ' + indexTrail[i];
+                    }
+                    ffs.push(clause);
+                });
+
+                var sub = {
+                    'fromGlyph': fromglyph,
+                    'toGlyph': toglyph,
+                    'features': featureTrail.slice(),
+                    'indices': indexTrail,
+                    'fontFeatureSettings': ffs.join(', ')
+                };
+                
+                substitutions.push(sub);
+
+                addcell(toglyph, featureTrail, indexTrail);
+                featureTrail.pop();
+                indexTrail.pop();
+            });
+        });
+    };
+    
+    Object.forEach(g2g, function(whatever, fromGlyph) {
+        addcell(fromGlyph);
+    });
+    
+    return substitutions;
+}
+
+function getMetrics(glyph, font) {
+    try {
+        var metrics = glyph.getMetrics();
+    } catch (e) {
+        console.log("Error getting metrics for glyph " + glyph.index, e);
+        return {};
+    }
+
+    return {
+        'left': metrics.leftSideBearing / font.unitsPerEm,
+        'right': metrics.rightSideBearing / font.unitsPerEm,
+        'width': glyph.advanceWidth / font.unitsPerEm
+    };
+}
 
 function getAlternatesForUrl(fontUrl, callback) {
-    var alternates = {}
+    var alternates = {};
     
     window.opentype.load(fontUrl, function(err, font) {
         if (err) {
@@ -379,26 +687,17 @@ function getAlternatesForUrl(fontUrl, callback) {
 
         window.font = font;
 
-        //populate glyph alternates
-        var gsub = font.tables.gsub;
-
-        if (!gsub) {
-            callback(alternates, font);
-            return;
-        }
-
-        var reversecmap = {};
-        Object.forEach(font.tables.cmap.glyphIndexMap, function(g, u) {
-            reversecmap[g] = String.fromCharCode(u);
-        });
-        function addAlt(fromText, toGlyphID, feature, featIndex) {
+        var reversecmap = getReverseCmap(font);
+        
+        function addAlt(fromText, toGlyphID, features, indices, ffs) {
             var toGlyph = font.glyphs.glyphs[toGlyphID];
             if (!toGlyph) {
-                console.log('ERROR: "' + fromText + '" + ' + feature + ' results in nonexistent glyph ' + toGlyphID + '.');
+                console.log('ERROR: "' + fromText + '" + ' + ffs + ' results in nonexistent glyph ' + toGlyphID + '.');
                 return;
             }
             try {
-                var metrics = toGlyph.getMetrics();
+                var metrics = getMetrics(toGlyph, font);
+
                 if (!(fromText in alternates)) {
                     alternates[fromText] = {};
                 }
@@ -406,125 +705,33 @@ function getAlternatesForUrl(fontUrl, callback) {
                 //generally first found substitution wins, but prefer specific alt features to aalt
                 if (!existingSub || existingSub.feature === 'aalt' || existingSub.featureIndex > 0) {
                     alternates[fromText][toGlyph.index] = {
-                        'feature': feature,
+                        'feature': features[0],
                         'unicode': reversecmap[toGlyph.index],
-                        'left': metrics.leftSideBearing / font.unitsPerEm,
-                        'right': metrics.rightSideBearing / font.unitsPerEm,
-                        'featureIndex': featIndex
+                        'featureIndex': parseInt(indices[0]) || "", // valid values will always be nonzero
+                        'fontFeatureSettings': ffs,
+                        'features': features,
+                        'featureIndices': indices
                     };
+                    Object.forEach(getMetrics(toGlyph, font), function(v, k) {
+                        alternates[fromText][toGlyph.index][k] = v;
+                    });
                 }
             } catch (e) {
-                console.log(e);
+                console.log("Unknown error in addAlt", e);
             }
         }
 
-        var unhandledFeatures = {};
-        gsub.features.forEach(function(f) {
-            var tag = f.tag;
-            var feature = f.feature;
-
-            feature.lookupListIndexes.forEach(function(lli) {
-                var lookup = gsub.lookups[lli];
-                lookup.subtables.forEach(function(subtable) {
-                    function unhandled() {
-                        if (!(tag in unhandledFeatures)) {
-                            unhandledFeatures[tag] = 0;
-                        }
-                        unhandledFeatures[tag] += 1;
-                        //console.log('Unhandled OT feature:', tag, subtable);
-                    }
-
-                    //console.log(tag, lli, subtable);
-                    if ('mapping' in subtable) {
-                        Object.forEach(mapping, function(toglyph, fromglyph) {
-                            addAlt(reversecmap[fromglyph], toglyph, tag);
-                        });
-                    } else if ('coverage' in subtable && 'ligatureSets' in subtable) {
-                        // ligatures: many to one substitution
-                        var firsts = [];
-                        if ('glyphs' in subtable.coverage) {
-                            subtable.coverage.glyphs.forEach(function(glyph) {
-                                firsts.push(reversecmap[glyph]);
-                            });
-                        } else if ('ranges' in subtable.coverage) {
-                            subtable.coverage.ranges.forEach(function(range) {
-                                for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
-                                    firsts.push(reversecmap[fromglyph]);
-                                }
-                            });
-                        }
-                        var ligs = [];
-                        subtable.ligatureSets.forEach(function(ligsetset, i) {
-                            ligsetset.forEach(function(ligset, j) {
-                                var lig = firsts[i];
-                                ligset.components.forEach(function(component) {
-                                    lig += reversecmap[component];
-                                });
-                                addAlt(lig, ligset.ligGlyph, tag);
-                                ligs.push(lig);
-                            });
-                        });
-                    } else if ('coverage' in subtable) {
-                        // common one-to-one substitutions.
-                        // there are a million ways to represent these in GSUB
-                        var hasSubstitute = 'substitute' in subtable;
-                        var hasDelta = 'deltaGlyphId' in subtable;
-                        var hasAlternates = 'alternateSets' in subtable;
-                        if (!hasSubstitute && !hasDelta && !hasAlternates) {
-                            unhandled();
-                        } else if ('glyphs' in subtable.coverage) {
-                            subtable.coverage.glyphs.forEach(function(fromglyph, i) {
-                                if (hasSubstitute) {
-                                    addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
-                                } else if (hasDelta) {
-                                    addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
-                                } else if (hasAlternates) {
-                                    subtable.alternateSets[i].forEach(function(altID, altIndex) {
-                                        addAlt(reversecmap[fromglyph], altID, tag, altIndex + 1);
-                                    });
-                                }
-                            });
-                        } else if ('ranges' in subtable.coverage) {
-                            var i = 0;
-                            subtable.coverage.ranges.forEach(function(range) {
-                                for (var fromglyph=range.start; fromglyph<=range.end; fromglyph++) {
-                                    if (hasSubstitute) {
-                                        addAlt(reversecmap[fromglyph], subtable.substitute[i], tag);
-                                    } else if (hasDelta) {
-                                        addAlt(reversecmap[fromglyph], fromglyph + subtable.deltaGlyphId, tag);
-                                    } else if (hasAlternates) {
-                                        subtable.alternateSets[i].forEach(function(altID, altIndex) {
-                                            addAlt(reversecmap[fromglyph], altID, tag, altIndex + 1);
-                                        });
-                                    }
-                                    ++i;
-                                }
-                            });
-                        }
-                    } /* else if ('backtrackCoverage' in subtable) {
-                        //as far as I can tell, these are all covered in regular alternates above
-                        function asdf(arr) {
-                            var r = [];
-                            for (var i in arr) {
-                                if (!arr[i].glyphs) continue;
-                                for (var j in arr[i].glyphs) {
-                                    r.push(reversecmap[arr[i].glyphs[j]]);
-                                }
-                            }
-                            return r;
-                        }
-                        console.log(tag, subtable);
-                        console.log(asdf(subtable.backtrackCoverage), asdf(subtable.inputCoverage), asdf(subtable.lookaheadCoverage));
-                    } */ else {
-                        unhandled();
-                    }
-                });
+        getGlyphSubstitutionTrails(font).forEach(function(sub) {
+            if (sub.fromGlyph in reversecmap) {
+                addAlt(reversecmap[sub.fromGlyph], sub.toGlyph, sub.features, sub.indices, sub.fontFeatureSettings);
+            }
+        });
+        
+        Object.forEach(getLigatures(font), function(features, fromText) {
+            Object.forEach(features, function(toGlyph, feature) {
+                addAlt(fromText, toGlyph, [feature], [""], '"' + feature + '"');
             });
         });
-
-        if (Object.keys(unhandledFeatures).length) {
-            console.log("Unhandled features: ", unhandledFeatures);
-        }
 
         if (callback) {
             callback(alternates, font);
@@ -1081,7 +1288,7 @@ window.Flont = function(options) {
 
                     alternates.appendChild(li);
                 });
-
+                
                 //really doing it now!
 
                 //get rid of existing popup, if any
@@ -1205,6 +1412,34 @@ window.Flont = function(options) {
 
 }; //window.Flont
 
+
+// separate function for handling glyph grids
+window.Flont.getGlyphsForUrl = function(fonturl, callback) {
+    getAlternatesForUrl(fonturl, function(alternates, font) {
+        var result = {
+            'characters': [],
+            'substitutions': {},
+            'metrics': {
+                'maxWidth': 0.0
+            }
+        };
+        
+        //first, just compile the unicode codepoints
+        Object.forEach(font.tables.cmap.glyphIndexMap, function(gid, unicode) {
+            var c = String.fromCodePoint(unicode);
+            if (unicode >= 32) {
+                result.characters.push(c);
+                result.metrics[c] = getMetrics(font.glyphs.glyphs[gid], font);
+                result.metrics.maxWidth = Math.max(result.metrics.maxWidth, result.metrics[c].width);
+            }
+        });
+        
+        result.substitutions = alternates;
+
+        callback(result, font);
+    });
+};
+
 //allow a little cross-Flont communication to avoid interference between testers
 window.Flont.documentFlonts = [];
 
@@ -1232,5 +1467,6 @@ document.addEventListener('selectionchange', processEvents);
 document.addEventListener('mouseup', processEvents);
 document.addEventListener('touchend', processEvents);
 document.addEventListener('keyup', processEvents);
+
 
 })();
