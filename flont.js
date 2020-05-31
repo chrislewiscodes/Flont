@@ -710,9 +710,10 @@ function getAlternatesForUrl(fontUrl, callback) {
                         'featureIndex': parseInt(indices[0]) || "", // valid values will always be nonzero
                         'fontFeatureSettings': ffs,
                         'features': features,
-                        'featureIndices': indices
+                        'featureIndices': indices,
+                        'glyph': toGlyph.index
                     };
-                    Object.forEach(getMetrics(toGlyph, font), function(v, k) {
+                    Object.forEach(metrics, function(v, k) {
                         alternates[fromText][toGlyph.index][k] = v;
                     });
                 }
@@ -1420,17 +1421,28 @@ window.Flont.getGlyphsForUrl = function(fonturl, callback) {
             'characters': [],
             'substitutions': {},
             'metrics': {
-                'maxWidth': 0.0
+                'maxWidth': 0.0,
+                'em': font.unitsPerEm,
+                'baseline': 1 + (font.tables.os2.sTypoDescender / font.unitsPerEm),
+                'ascender': font.tables.os2.sTypoAscender / font.unitsPerEm,
+                'descender': -font.tables.os2.sTypoDescender / font.unitsPerEm,
+                'capHeight': font.tables.os2.sCapHeight / font.unitsPerEm,
+                'xHeight': font.tables.os2.sxHeight / font.unitsPerEm
             }
         };
-        
+                
         //first, just compile the unicode codepoints
         Object.forEach(font.tables.cmap.glyphIndexMap, function(gid, unicode) {
             var c = String.fromCodePoint(unicode);
+            var metrics = getMetrics(font.glyphs.glyphs[gid], font);
             if (unicode >= 32) {
-                result.characters.push(c);
-                result.metrics[c] = getMetrics(font.glyphs.glyphs[gid], font);
-                result.metrics.maxWidth = Math.max(result.metrics.maxWidth, result.metrics[c].width);
+                result.characters.push({
+	                'codepoint': parseInt(unicode),
+	                'character': String.fromCodePoint(unicode),
+	                'glyph': gid,
+	                'metrics': metrics
+                });
+                result.metrics.maxWidth = Math.max(result.metrics.maxWidth, metrics.width);
             }
         });
         
