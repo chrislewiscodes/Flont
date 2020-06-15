@@ -396,7 +396,7 @@ function doAjax(url, options) {
 }
 
 function windowScrollTop() {
-    return Math.max(document.documentElement.scrollTop, document.body.scrollTop);
+    return window.scrollY || window.pageYOffset;
 }
 
 function smoothScroll(y, el) {
@@ -1334,7 +1334,7 @@ window.Flont = function(options) {
                 var centeredLeft = document.documentElement.scrollLeft + selection.rectangle.left + selection.rectangle.width/2 - popupWidth/2 - bodyRect.left;
                 var adjustedLeft = Math.max(document.documentElement.scrollLeft + 12, Math.min(winWidth - popupWidth - 12, centeredLeft));
 
-                wrapper.style.top = (windowScrollTop() + selection.rectangle.top + selection.rectangle.height) + 'px';
+                wrapper.style.top = (-bodyRect.top + selection.rectangle.top + selection.rectangle.height + pointer.getBoundingClientRect().width/3) + 'px';
                 wrapper.style.left = adjustedLeft + 'px';
 
                 if (centeredLeft !== adjustedLeft) {
