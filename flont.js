@@ -602,8 +602,10 @@ function getGlyphSubstitutionTrails(font) {
     var g2g = getGlyphSingleSubstitutions(font);
     var seen = {};
     var substitutions = [];
+    var urglyph;
     var addcell = function(fromglyph, featureTrail, indexTrail) {
         if (!featureTrail || !indexTrail) {
+            urglyph = fromglyph;
             featureTrail = [];
             indexTrail = [];
         }
@@ -637,7 +639,7 @@ function getGlyphSubstitutionTrails(font) {
                 });
 
                 var sub = {
-                    'fromGlyph': fromglyph,
+                    'fromGlyph': urglyph,
                     'toGlyph': toglyph,
                     'features': featureTrail.slice(),
                     'indices': indexTrail,
