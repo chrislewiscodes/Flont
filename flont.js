@@ -845,7 +845,7 @@ window.Flont = function(options) {
 
 
     //populate features dropdown
-    function populateFeatures(font) {
+    function populateFeatures(alternates, font) {
         var select = options.controls.features;
 
         //no need to do this if there is no features control
@@ -856,44 +856,121 @@ window.Flont = function(options) {
         select.textContent = "";
 
         //styleset matcher
-        var ssre = /ss\d\d/;
+        var ssre = /ss(\d\d)/;
 
         //features to be enabled by default
-        var defaults = /liga|calt|r.../; //"r" features usually mean "required" and probably can't be disabled
+        var defaults = /liga|calt|rlig|rvrn|rclt|dnum/; //"r" features are "required" can't be disabled
+        
+        var figureTags = /[oltp]num/;
 
-        var seen = {};
+        var features = {};
+        var figureStyles = {};
 
-        if (!font.tables.gsub || !font.tables.gsub.features) {
-            //there ain't no features
-            return;
+        Object.forEach(alternates, function(subs, fromText) {
+            Object.forEach(subs, function(sub, toGlyph) {
+                if (sub.fontFeatureSettings in features) {
+                    return;
+                }
+
+                var fstring = sub.features.join(',');
+
+                if (figureTags.test(sub.fontFeatureSettings) && sub.features.length <= 2) {
+                    switch (fstring) {
+                        case "onum": case "tnum": case "lnum": case "pnum":
+                            figureStyles[fstring] = otFeatures[fstring];
+                            break;
+                        case "onum,tnum": case "tnum,onum":
+                            figureStyles[fstring] = "Tabular Old Style";
+                            break;
+                        case "onum,pnum": case "pnum,onum":
+                            figureStyles[fstring] = "Proportional Old Style";
+                            break;
+                        case "lnum,tnum": case "tnum,lnum":
+                            figureStyles[fstring] = "Tabular Lining";
+                            break;
+                        case "lnum,pnum": case "pnum,lnum":
+                            figureStyles[fstring] = "Proportional Lining";
+                            break;
+                    }
+                } else if (sub.features.length === 1 && (sub.features[0] in otFeatures || ssre.test(sub.features[0]))) {
+                    features[sub.fontFeatureSettings] = otFeatures[sub.features[0]] || sub.features[0].replace(ssre, "Stylistic Set $1");
+                }
+            });
+        });
+
+        if (figureStyles.tnum && !figureStyles.pnum) {
+            if (figureStyles.onum) { figureStyles.onum = "Proportional Old Style"; }
+            if (figureStyles.lnum) { figureStyles.onum = "Proportional Lining"; }
         }
 
-        font.tables.gsub.features.forEach(function(table) {
-            if (table.tag in seen) return; //sometimes see weird duplicates
-            if (!(table.tag in otFeatures) && !ssre.test(table.tag)) return;
-            //if (ssre.test(table.tag)) return;
+        if (figureStyles.pnum && !figureStyles.tnum) {
+            if (figureStyles.onum) { figureStyles.onum = "Tabular Old Style"; }
+            if (figureStyles.lnum) { figureStyles.onum = "Tabular Lining"; }
+        }
+
+        if (figureStyles.lnum && !figureStyles.onum) {
+            if (figureStyles.tnum) { figureStyles.tnum = "Tabular Old Style"; }
+            if (figureStyles.pnum) { figureStyles.pnum = "Proportional Old Style"; }
+        }
+
+        if (figureStyles.onum && !figureStyles.lnum) {
+            if (figureStyles.tnum) { figureStyles.tnum = "Tabular Lining"; }
+            if (figureStyles.pnum) { figureStyles.pnum = "Proportional Lining"; }
+        }
+        
+        var defaultFigureStyle;
+        if (figureStyles.pnum && figureStyles.lnum) {
+            defaultFigureStyle = "Tabular Old Style";
+        } else if (figureStyles.pnum && figureStyles.onum) {
+            defaultFigureStyle = "Tabular Lining";
+        } else if (figureStyles.tnum && figureStyles.lnum) {
+            defaultFigureStyle = "Proportional Old Style";
+        } else if (figureStyles.tnum && figureStyles.onum) {
+            defaultFigureStyle = "Proportional Lining";
+        } else {
+            defaultFigureStyle = "Default Figures";
+        }
+
+        var rando = function() {
+            return "input-" + Date.now().toString() + '-' + Math.random().toString().substr(2);
+        }
+
+        var addopt = function(type, name, label, ffs) {
             if (select.tagName === 'SELECT') {
                 var option = document.createElement('option');
-                option.value = table.tag;
-                option.textContent = otFeatures[table.tag] || table.tag.replace("ss", "Stylistic Set ");
-                option.selected = defaults.test(table.tag);
+                option.value = ffs;
+                option.textContent = label;
+                option.selected = defaults.test(ffs);
                 select.appendChild(option);
             } else {
-                var rando = "input-" + Date.now().toString() + '-' + Math.random().toString().substr(2);
+                var id = rando();
                 var item = document.createElement('li');
                 var input = document.createElement('input');
-                var label = document.createElement('label');
-                input.type = 'checkbox';
-                input.checked = defaults.test(table.tag);
-                input.value = table.tag;
-                input.id = rando;
-                label.textContent = otFeatures[table.tag] || table.tag.replace("ss", "Stylistic Set ");
-                label.setAttribute('for', rando);
+                var labelel = document.createElement('label');
+                input.type = type;
+                if (name) {
+                    input.name = name;
+                }
+                input.checked = defaults.test(ffs);
+                input.value = ffs;
+                input.id = id;
+                labelel.textContent = label;
+                labelel.setAttribute('for', id);
+                labelel.setAttribute('data-feature', ffs);
                 item.appendChild(input);
-                item.appendChild(label);
+                item.appendChild(labelel);
                 select.appendChild(item);
             }
-            seen[table.tag] = true;
+        };
+
+        var figid = rando();
+        addopt('radio', figid, defaultFigureStyle, '"dnum"', true);
+        Object.forEach(figureStyles, function(label, features) {
+            addopt('radio', figid, label, '"' + features.replace(',', '", "') + '"');
+        });
+
+        Object.forEach(features, function(label, ffs) {
+            addopt('checkbox', null, label, ffs);
         });
 
         select.trigger('change');
@@ -908,7 +985,7 @@ window.Flont = function(options) {
 
         getAlternatesForUrl(fontUrl, function(alternates, font) {
             currentAlternates = alternates;
-            populateFeatures(font);
+            populateFeatures(alternates, font);
         });
     }
 
@@ -941,7 +1018,7 @@ window.Flont = function(options) {
             options.controls.features.addEventListener('change', function(evt) {
                 var ffs = [];
                 options.controls.features.querySelectorAll(':checked').forEach(function(input) {
-                    ffs.push('"' + input.value + '" 1');
+                    ffs.push(input.value);
                 });
                 options.sample.style.fontFeatureSettings = ffs.join(", ");
             });
