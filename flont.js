@@ -1492,6 +1492,26 @@ window.Flont = function(options) {
 
 }; //window.Flont
 
+// handy metrics function
+window.Flont.getMetrics = function(font) {
+        var os2 = font.tables.os2;
+        var hhea = font.tables.hhea;
+        var useTypo = true; //!!(os2.fsSelection & 128);
+        var ascent = useTypo ? os2.sTypoAscender : os2.usWinAscent;
+        var descent = useTypo ? -os2.sTypoDescender : os2.usWinDescent;
+        var divisor = /* font.unitsPerEm */ ascent + descent;
+        return {
+                'maxWidth': 0.0,
+                'em': font.unitsPerEm,
+                'baseline': ascent / (ascent + descent),
+                'ascender': ascent / divisor,
+                'descender': descent / divisor,
+                'capHeight': os2.sCapHeight / divisor,
+                'xHeight': os2.sxHeight / divisor,
+                'lineGap': os2.sTypoLineGap / divisor,
+                'useTypo': !!(os2.fsSelection & 128)
+        };
+};
 
 // separate function for handling glyph grids
 window.Flont.getGlyphsForUrl = function(fonturl, callback) {
@@ -1499,17 +1519,9 @@ window.Flont.getGlyphsForUrl = function(fonturl, callback) {
         var result = {
             'characters': [],
             'substitutions': {},
-            'metrics': {
-                'maxWidth': 0.0,
-                'em': font.unitsPerEm,
-                'baseline': 1 + (font.tables.os2.sTypoDescender / font.unitsPerEm),
-                'ascender': font.tables.os2.sTypoAscender / font.unitsPerEm,
-                'descender': -font.tables.os2.sTypoDescender / font.unitsPerEm,
-                'capHeight': font.tables.os2.sCapHeight / font.unitsPerEm,
-                'xHeight': font.tables.os2.sxHeight / font.unitsPerEm
-            }
+            'metrics': window.Flont.getMetrics(font)
         };
-                
+        
         //first, just compile the unicode codepoints
         Object.forEach(font.tables.cmap.glyphIndexMap, function(gid, unicode) {
             var c = String.fromCodePoint(unicode);
