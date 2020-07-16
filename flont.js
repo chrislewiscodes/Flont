@@ -190,6 +190,10 @@ if (!HTMLElement.prototype.trigger) {
     };
 }
 
+if (!Document.prototype.trigger) {
+    Document.prototype.trigger = HTMLElement.prototype.trigger;
+}
+
 // closest, from MDN
 if (!Element.prototype.matches) {
     Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
