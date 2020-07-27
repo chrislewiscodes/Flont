@@ -1502,7 +1502,7 @@ window.Flont.getMetrics = function(font) {
         var hhea = font.tables.hhea;
         var useTypo = !!(os2.fsSelection & 128);
         var ascent = useTypo ? os2.sTypoAscender : /* os2.usWinAscent */ hhea.ascender;
-        var descent = useTypo ? -os2.sTypoDescender : /* os2.usWinDescent */ -hhea.descender;
+        var descent = useTypo ? -os2.sTypoDescender : /* os2.usWinDescent */ hhea.descender;
         var divisor = font.unitsPerEm /* ascent + descent */;
         return {
                 'maxWidth': 0.0,
