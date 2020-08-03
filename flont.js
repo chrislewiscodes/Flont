@@ -968,7 +968,9 @@ window.Flont = function(options) {
         };
 
         var figid = rando();
-        addopt('radio', figid, defaultFigureStyle, '"dnum"', true);
+        if (Object.keys(figureStyles).length > 0) {
+            addopt('radio', figid, defaultFigureStyle, '"dnum"', true);
+        }
         Object.forEach(figureStyles, function(label, features) {
             addopt('radio', figid, label, '"' + features.replace(',', '", "') + '"');
         });
@@ -984,12 +986,16 @@ window.Flont = function(options) {
         var fontUrl = getSampleWebfontUrl();
         if (!fontUrl) {
             console.log("Couldn't find valid webfont URL in CSS @font-face rules.");
+            currentAlternates = {};
+            populateFeatures({}, {});
+            options.sample.trigger('flont-loaded');
             return;
         }
 
         getAlternatesForUrl(fontUrl, function(alternates, font) {
             currentAlternates = alternates;
             populateFeatures(alternates, font);
+            options.sample.trigger('flont-loaded');
         });
     }
 
