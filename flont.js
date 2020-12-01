@@ -510,6 +510,16 @@ function getGlyphSingleSubstitutions(font) {
                         return;
                     }
                     
+                    function negateDelta(delta) {
+                        //deltaGlyphId is a signed 16-bit integer! So if it is >= 32768, it needs to be negated
+                        // this is a bug in opentype.js https://github.com/opentypejs/opentype.js/issues/455
+                        if (delta >= 32768) {
+                            return -((delta ^ 65535) + 1);
+                        } else {
+                            return delta;
+                        }
+                    }
+                    
                     // common one-to-one substitutions
                     // there are a million ways to represent these in GSUB
                     var hasSubstitute = 'substitute' in subtable;
@@ -522,7 +532,7 @@ function getGlyphSingleSubstitutions(font) {
                             if (hasSubstitute) {
                                 glyph2glyph(fromglyph, subtable.substitute[i], tag);
                             } else if (hasDelta) {
-                                glyph2glyph(fromglyph, fromglyph + subtable.deltaGlyphId, tag);
+                                glyph2glyph(fromglyph, fromglyph + negateDelta(subtable.deltaGlyphId), tag);
                             } else if (hasAlternates) {
                                 subtable.alternateSets[i].forEach(function(altID, altIndex) {
                                     glyph2glyph(fromglyph, altID, tag, altIndex + 1);
@@ -536,7 +546,7 @@ function getGlyphSingleSubstitutions(font) {
                                 if (hasSubstitute) {
                                     glyph2glyph(fromglyph, subtable.substitute[i], tag);
                                 } else if (hasDelta) {
-                                    glyph2glyph(fromglyph, fromglyph + subtable.deltaGlyphId, tag);
+                                    glyph2glyph(fromglyph, fromglyph + negateDelta(subtable.deltaGlyphId), tag);
                                 } else if (hasAlternates) {
                                     subtable.alternateSets[i].forEach(function(altID, altIndex) {
                                         glyph2glyph(fromglyph, altID, tag, altIndex + 1);
