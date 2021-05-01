@@ -11,7 +11,7 @@ inclusion in public projects.
 
 ## Usage
 
-### Ultra-simple mode:
+### Simple mode:
 
 ```
 Flont('#specimen-element')
@@ -40,7 +40,6 @@ Flont({
 
 ## About the project
 
-Flont was written by [Chris Lewis](https://chrislewis.codes/), based on work done originally for
-[Laura Worthington Design](https://lauraworthingtondesign.com/news/article/the-type-tester).
-Many thanks to Laura for essentially financing the development of Flont, and for being game
-to release her signature website feature as a public tool!
+Flont was written by [Chris Lewis](https://chrislewis.codes/). Thanks to 
+[Laura Worthington Design](https://lauraworthingtondesign.com/news/article/the-type-tester)
+for partially financing the development of Flont.
